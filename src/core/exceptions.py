@@ -17,4 +17,4 @@ class AIProviderException(BaseAppException):
 
 class DocumentProcessingException(BaseAppException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
-        super().__init__(message, "DOCUMENT_PROCESSING_ERROR", details)\n
+        super().__init__(message, "DOCUMENT_PROCESSING_ERROR", details)

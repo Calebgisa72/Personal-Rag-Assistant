@@ -15,4 +15,4 @@ def setup_logger():
     )
     logging.basicConfig(level=logging.INFO)
 
-logger = structlog.get_logger()\n
+logger = structlog.get_logger()

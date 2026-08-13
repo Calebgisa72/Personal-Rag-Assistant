@@ -23,4 +23,4 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             status_code=response.status_code
         )
         response.headers["X-Request-ID"] = request_id
-        return response\n
+        return response

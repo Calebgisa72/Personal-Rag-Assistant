@@ -19,4 +19,4 @@ class CostService:
             
         input_cost = (input_tokens / 1000.0) * pricing["input"]
         output_cost = (output_tokens / 1000.0) * pricing["output"]
-        return input_cost + output_cost\n
+        return input_cost + output_cost

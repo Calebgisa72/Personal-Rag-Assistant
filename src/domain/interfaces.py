@@ -1,6 +1,6 @@
+from domain.entities import DocumentChunk
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from src.domain.entities import DocumentChunk, ConversationEntity, MessageEntity
 
 class IAIProvider(ABC):
     @abstractmethod
@@ -21,4 +21,4 @@ class IVectorStore(ABC):
         pass
 
 class IRepository(ABC):
-    pass\n
+    pass

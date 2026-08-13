@@ -1,7 +1,7 @@
 from typing import List
-from src.domain.interfaces import IAIProvider, IVectorStore
-from src.services.embedding_service import EmbeddingStrategyService
-from src.core.logger import logger
+from domain.interfaces import IAIProvider, IVectorStore
+from services.embedding_service import EmbeddingStrategyService
+from core.logger import logger
 
 class RAGService:
     def __init__(self, embedding_service: EmbeddingStrategyService, ai_provider: IAIProvider, vector_store: IVectorStore):
@@ -33,4 +33,4 @@ class RAGService:
         # 4. Generate Answer
         logger.info("generating_rag_answer", num_chunks_retrieved=len(chunks))
         answer = await self.ai_provider.generate_completion(messages)
-        return answer\n
+        return answer

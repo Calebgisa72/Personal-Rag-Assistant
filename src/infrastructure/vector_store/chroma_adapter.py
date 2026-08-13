@@ -1,9 +1,9 @@
 from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from src.domain.interfaces import IVectorStore
-from src.domain.entities import DocumentChunk
-from src.core.config import settings
+from domain.interfaces import IVectorStore
+from domain.entities import DocumentChunk
+from core.config import settings
 
 class ChromaDBVectorStore(IVectorStore):
     def __init__(self, collection_name: str = "rag_collection"):
@@ -65,4 +65,4 @@ class ChromaDBVectorStore(IVectorStore):
             )
             chunks.append(chunk)
             
-        return chunks\n
+        return chunks

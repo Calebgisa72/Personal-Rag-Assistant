@@ -32,4 +32,4 @@ dev = [
     "black",
     "isort",
     "mypy"
-]\n
+]

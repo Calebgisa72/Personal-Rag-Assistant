@@ -34,4 +34,4 @@ class ConversationEntity:
     user_id: uuid.UUID
     conversation_id: uuid.UUID = field(default_factory=uuid.uuid4)
     messages: List[MessageEntity] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.utcnow)\n
+    created_at: datetime = field(default_factory=datetime.utcnow)

@@ -15,4 +15,4 @@ class ChatResponse(BaseModel):
 @router.post("", response_model=ChatResponse)
 async def chat(request: ChatRequest, rag_service: RAGService = Depends(get_rag_service)):
     answer = await rag_service.ask_question(request.question)
-    return ChatResponse(answer=answer)\n
+    return ChatResponse(answer=answer)

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from src.core.logger import setup_logger
-from src.core.middleware import RequestIDMiddleware
-from src.api.routers import chat, system
+from core.logger import setup_logger
+from core.middleware import RequestIDMiddleware
+from api.routers import chat, system
 
 setup_logger()
 
@@ -14,4 +14,4 @@ app = FastAPI(
 app.add_middleware(RequestIDMiddleware)
 
 app.include_router(system.router)
-app.include_router(chat.router)\n
+app.include_router(chat.router)

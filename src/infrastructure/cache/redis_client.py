@@ -1,5 +1,5 @@
 import redis.asyncio as redis
-from src.core.config import settings
+from core.config import settings
 
 class RedisClientManager:
     _pool = None
@@ -21,4 +21,4 @@ async def get_redis_client():
     try:
         yield client
     finally:
-        await client.aclose()\n
+        await client.aclose()

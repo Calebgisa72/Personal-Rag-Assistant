@@ -1,4 +1,4 @@
-from src.persistence.database import AsyncSessionLocal
+from persistence.database import AsyncSessionLocal
 
 class UnitOfWork:
     def __init__(self):
@@ -16,4 +16,4 @@ class UnitOfWork:
             await self.session.rollback()
         else:
             await self.session.commit()
-        await self.session.close()\n
+        await self.session.close()

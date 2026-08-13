@@ -1,7 +1,7 @@
 from typing import List
 import asyncio
-from src.domain.interfaces import IAIProvider
-from src.core.logger import logger
+from domain.interfaces import IAIProvider
+from core.logger import logger
 
 class EmbeddingStrategyService:
     """
@@ -26,4 +26,4 @@ class EmbeddingStrategyService:
         # But we could wrap this to enforce specific batch sizes (e.g. 50 at a time)
         # to respect rate limits.
         logger.info("embedding_batch_requested", num_texts=len(texts))
-        return await self.ai_provider.generate_embeddings(texts, model=self.model_name)\n
+        return await self.ai_provider.generate_embeddings(texts, model=self.model_name)
