@@ -12,9 +12,8 @@ class ChunkingService:
         )
 
     def chunk_document(self, document: DocumentEntity) -> List[DocumentChunk]:
-        # Using LangChain to split
         texts = self.text_splitter.split_text(document.content)
-        
+
         chunks = []
         for index, text in enumerate(texts):
             chunk = DocumentChunk(

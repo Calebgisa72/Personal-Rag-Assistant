@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from src.api.dependencies import get_rag_service
-from src.services.rag_service import RAGService
+from api.dependencies import get_rag_service
+from services.rag_service import RAGService
 
 router = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 

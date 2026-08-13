@@ -1,24 +1,24 @@
 import httpx
 import asyncio
 from typing import List, Dict, Any
-from src.domain.interfaces import IAIProvider
-from src.core.config import settings
-from src.core.exceptions import AIProviderException
-from src.core.logger import logger
+from domain.interfaces import IAIProvider
+from core.config import settings
+from core.exceptions import AIProviderException
+from core.logger import logger
 
 class AmaliAIProvider(IAIProvider):
     def __init__(self):
         self.base_url = settings.AMALI_API_URL
         self.api_key = settings.AMALI_API_KEY
         self.provider = settings.AMALI_PROVIDER_NAME
-        
+
         # We do NOT use 'Authorization: Bearer <token>'
         self.headers = {
             "X-Api-Key": self.api_key,
             "Provider": self.provider,
             "Content-Type": "application/json"
         }
-        
+
     async def _make_request(self, method: str, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         async with httpx.AsyncClient(timeout=30.0) as client:
             url = f"{self.base_url}{endpoint}"
@@ -61,12 +61,12 @@ class AmaliAIProvider(IAIProvider):
         # We embed them concurrently and use asyncio.gather to preserve original order.
         tasks = [self._generate_single_embedding(text, model) for text in texts]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         final_embeddings = []
         for i, res in enumerate(results):
             if isinstance(res, Exception):
                 logger.error("embedding_generation_failed_for_chunk", index=i, error=str(res))
                 raise res
             final_embeddings.append(res)
-            
+
         return final_embeddings
