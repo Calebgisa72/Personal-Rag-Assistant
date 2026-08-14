@@ -1,5 +1,5 @@
+from typing import List
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from typing import List, Dict, Any, Optional
 from domain.entities import DocumentEntity, DocumentChunk
 from core.config import settings
 
