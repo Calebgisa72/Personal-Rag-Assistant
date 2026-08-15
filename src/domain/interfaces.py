@@ -8,7 +8,7 @@ class IAIProvider(ABC):
         pass
 
     @abstractmethod
-    async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    async def generate_embeddings(self, texts: List[str], **kwargs) -> List[List[float]]:
         pass
 
 class IVectorStore(ABC):

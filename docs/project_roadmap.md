@@ -9,7 +9,7 @@ This roadmap outlines the chronological development plan to elevate the Personal
 
 - [ ] **SQLAlchemy Setup:** Configure `src/infrastructure/database/session.py` with SQLAlchemy async engine and session maker.
 - [ ] **Model Implementation:** Translate `src/domain/entities.py` dataclasses to SQLAlchemy declarative base models (`User`, `Conversation`, `Message`, `DocumentMetadata`).
-  - *Note:* Do NOT save document content/chunks in Postgres. Postgres should only store metadata and relationships.
+  - *Note:* Do NOT save document content in Postgres. Postgres should only store metadata and relationships. Document chunks should also be embedded and we save the embedded vectors in ChromaDB for symantic search and retrieval.
 - [ ] **Alembic Migrations:** Setup Alembic for database schema versioning. Create the initial migration script.
 - [ ] **Repository Pattern Update:** Implement the SQLAlchemy repositories for `ConversationRepository` and `DocumentRepository` in `src/persistence/`.
 
