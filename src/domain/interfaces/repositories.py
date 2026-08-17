@@ -19,6 +19,11 @@ class IUserRepository(IRepository):
     async def get_by_email(self, email: str) -> Optional[UserEntity]:
         pass
 
+    @abstractmethod
+    async def get_auth_user_by_email(self, email: str) -> Optional[UserEntity]:
+        """Returns the user including the hashed_password for authentication purposes."""
+        pass
+
 class IConversationRepository(IRepository):
     @abstractmethod
     async def create(self, conversation: ConversationEntity) -> ConversationEntity:

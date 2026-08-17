@@ -7,8 +7,8 @@ from datetime import datetime
 class UserEntity:
     email: str
     username: str
-    hashed_password: str
     user_id: uuid.UUID = field(default_factory=uuid.uuid4)
+    hashed_password: Optional[str] = None
     profile_pic: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
