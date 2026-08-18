@@ -12,5 +12,7 @@ langchain==0.2.5
 langchain-community==0.2.5
 sentence-transformers==3.0.1
 chromadb==0.5.3
+python-multipart==0.0.9
+beautifulsoup4==4.12.3
 pytest==8.2.2
 pytest-asyncio==0.23.7

@@ -66,3 +66,6 @@ class ChromaDBVectorStore(IVectorStore):
             chunks.append(chunk)
             
         return chunks
+
+    async def delete_by_document_id(self, document_id: str) -> None:
+        self.collection.delete(where={"document_id": document_id})

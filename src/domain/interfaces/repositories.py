@@ -57,3 +57,7 @@ class IDocumentRepository(IRepository):
     @abstractmethod
     async def update_status(self, document_id: uuid.UUID, status: str) -> bool:
         pass
+
+    @abstractmethod
+    async def delete(self, document_id: uuid.UUID) -> bool:
+        pass

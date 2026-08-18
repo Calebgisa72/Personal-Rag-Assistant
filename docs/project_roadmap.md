@@ -1,6 +1,6 @@
 # Personal RAG Assistant - Project Roadmap
 
-This roadmap outlines the chronological development plan to elevate the Personal RAG Assistant to a production-ready, highly professional standard. Tasks are grouped logically by the branches they should be developed on.
+This roadmap outlines the chronological development plan to elevate the Personal RAG Assistant to a producgical development plan to elevate the Personal RAG Assistant to a production-ready, highly professional standard. Tasks are grouped logically by the branches they should be developed on.
 
 ---
 

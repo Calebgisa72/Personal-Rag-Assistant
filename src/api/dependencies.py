@@ -65,7 +65,12 @@ def get_rag_service(
 #     pass
 
 # def get_current_user(token: str = Depends(oauth2_scheme)):
-#     """Authenticates the user via JWT and returns the User entity."""
+#     \"\"\"Authenticates the user via JWT and returns the User entity.\"\"\"
 #     # return user
 #     pass
 
+from persistence.uow import UnitOfWork
+
+async def get_uow():
+    async with UnitOfWork() as uow:
+        yield uow
