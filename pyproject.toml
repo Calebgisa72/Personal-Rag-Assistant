@@ -23,6 +23,8 @@ dependencies = [
     "langchain-community>=0.2.5",
     "sentence-transformers>=3.0.1",
     "chromadb>=0.5.3",
+    "python-multipart>=0.0.9",
+    "beautifulsoup4>=4.12.3",
 ]
 
 [project.optional-dependencies]

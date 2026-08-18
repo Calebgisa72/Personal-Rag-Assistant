@@ -82,3 +82,14 @@ class DocumentRepository(IDocumentRepository):
         db_doc.upload_status = status
         await self.session.flush()
         return True
+
+    async def delete(self, document_id: uuid.UUID) -> bool:
+        stmt = select(DocumentMetadata).where(DocumentMetadata.document_id == document_id)
+        result = await self.session.execute(stmt)
+        db_doc = result.scalar_one_or_none()
+        if not db_doc:
+            return False
+        
+        await self.session.delete(db_doc)
+        await self.session.flush()
+        return True
