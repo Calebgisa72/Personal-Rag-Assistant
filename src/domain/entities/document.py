@@ -26,6 +26,7 @@ class DocumentEntity:
     upload_status: str = "pending" # pending, processed, failed
     document_id: uuid.UUID = field(default_factory=uuid.uuid4)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    content_hash: Optional[str] = None
     content: Optional[str] = None  # Kept for in-memory extraction passing, not for DB
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)

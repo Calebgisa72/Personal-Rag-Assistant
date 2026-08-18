@@ -38,7 +38,7 @@ async def upload_document(
 
     # Save file to local storage
     try:
-        file_path, file_size = await storage_service.save_file(file, max_size=settings.MAX_UPLOAD_SIZE)
+        file_path, file_size, file_hash = await storage_service.save_file(file, max_size=settings.MAX_UPLOAD_SIZE)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -49,6 +49,19 @@ async def upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save file locally."
         )
+    existing_doc = await uow.documents.get_by_hash(DUMMY_USER_ID, file_hash)
+    if existing_doc:
+        storage_service.delete_file(file_path)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "A document with this identical content already exists.",
+                "existing_document_id": str(existing_doc.document_id),
+                "existing_document_title": existing_doc.title,
+                "created_at": existing_doc.created_at.isoformat()
+            }
+        )
+
     document = DocumentEntity(
         title=file.filename or "Untitled",
         mime_type=file.content_type,
@@ -56,7 +69,8 @@ async def upload_document(
         file_path=file_path,
         file_size_bytes=file_size,
         user_id=DUMMY_USER_ID,
-        upload_status="pending"
+        upload_status="pending",
+        content_hash=file_hash
     )
 
     try:
@@ -100,6 +114,21 @@ async def ingest_url(
             failed_urls=[request.url]
         )
 
+    import hashlib
+    text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+    existing_doc = await uow.documents.get_by_hash(DUMMY_USER_ID, text_hash)
+    if existing_doc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "A document with this identical content already exists.",
+                "existing_document_id": str(existing_doc.document_id),
+                "existing_document_title": existing_doc.title,
+                "created_at": existing_doc.created_at.isoformat()
+            }
+        )
+
     file_size = len(text.encode('utf-8'))
 
     document = DocumentEntity(
@@ -110,6 +139,7 @@ async def ingest_url(
         file_size_bytes=file_size,
         user_id=DUMMY_USER_ID,
         upload_status="pending",
+        content_hash=text_hash,
         content=text
     )
 
