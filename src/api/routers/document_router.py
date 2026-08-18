@@ -16,6 +16,7 @@ from api.schemas.document_schemas import (
 )
 from core.config import settings
 from core.logger import logger
+from services.ingestion_tasks import process_and_ingest_document
 
 router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
 storage_service = StorageService()
@@ -68,6 +69,9 @@ async def upload_document(
             detail="Failed to save document metadata."
         )
 
+    # Trigger background ingestion task via Celery
+    process_and_ingest_document.delay(str(document.document_id))
+
     metadata_schema = DocumentMetadataSchema(
         document_id=document.document_id,
         title=document.title,
@@ -76,7 +80,7 @@ async def upload_document(
         source="local_upload",
         created_at=document.created_at
     )
-    
+
     return DocumentUploadResponse(
         message="Document uploaded successfully",
         document=metadata_schema
@@ -97,16 +101,16 @@ async def ingest_url(
         )
 
     file_size = len(text.encode('utf-8'))
-    
+
     document = DocumentEntity(
         title=title,
         mime_type="text/html",
         original_file_name=request.url,
-        file_path="", 
+        file_path="",
         file_size_bytes=file_size,
         user_id=DUMMY_USER_ID,
         upload_status="pending",
-        content=text 
+        content=text
     )
 
     try:
@@ -117,6 +121,9 @@ async def ingest_url(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save document metadata."
         )
+
+    # Trigger background ingestion task via Celery
+    process_and_ingest_document.delay(str(document.document_id))
 
     return URLIngestionResponse(
         message="URL ingested successfully",
@@ -136,7 +143,7 @@ async def delete_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found."
         )
-    
+
     # 1. Delete from PostgreSQL
     deleted = await uow.documents.delete(document_id)
     if not deleted:
@@ -155,5 +162,5 @@ async def delete_document(
     except Exception as e:
         logger.error(f"Failed to delete document from vector store: {e}")
         # Not throwing an error here so the user isn't stuck with a ghost entry in DB
-        
+
     return None
