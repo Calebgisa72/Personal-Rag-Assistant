@@ -55,6 +55,21 @@ class IDocumentRepository(IRepository):
         pass
 
     @abstractmethod
+    async def get_all_by_user_id_paginated(
+        self,
+        user_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 10,
+        mime_type: Optional[str] = None,
+        upload_status: Optional[str] = None,
+        search_query: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc"
+    ) -> tuple[List[DocumentEntity], int]:
+        """Returns a paginated list of documents matching the filters, and the total count."""
+        pass
+
+    @abstractmethod
     async def update_status(self, document_id: uuid.UUID, status: str) -> bool:
         pass
 

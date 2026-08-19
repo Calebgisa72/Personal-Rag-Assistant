@@ -12,8 +12,11 @@ from api.schemas.document_schemas import (
     DocumentUploadResponse,
     DocumentMetadataSchema,
     URLIngestionRequest,
-    URLIngestionResponse
+    URLIngestionResponse,
+    DocumentListResponse
 )
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
+from typing import List, Optional
 from core.config import settings
 from core.logger import logger
 from services.ingestion_tasks import process_and_ingest_document
@@ -24,6 +27,55 @@ url_scraper_service = URLScraperService()
 
 # Hardcoded user ID for now since Auth is not implemented
 DUMMY_USER_ID = uuid.UUID(int=1)
+
+@router.get("", response_model=DocumentListResponse)
+async def list_documents(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    mime_type: Optional[str] = Query(None, description="Filter by MIME type"),
+    upload_status: Optional[str] = Query(None, description="Filter by upload status"),
+    search_query: Optional[str] = Query(None, description="Search by title"),
+    sort_by: str = Query("created_at", description="Field to sort by (created_at, file_size_bytes, title)"),
+    sort_order: str = Query("desc", description="Sort order (asc or desc)"),
+    uow: UnitOfWork = Depends(get_uow)
+):
+    valid_sort_fields = ["created_at", "file_size_bytes", "title"]
+    if sort_by not in valid_sort_fields:
+        sort_by = "created_at"
+        
+    if sort_order.lower() not in ["asc", "desc"]:
+        sort_order = "desc"
+
+    skip = (page - 1) * limit
+
+    documents, total = await uow.documents.get_all_by_user_id_paginated(
+        user_id=DUMMY_USER_ID,
+        skip=skip,
+        limit=limit,
+        mime_type=mime_type,
+        upload_status=upload_status,
+        search_query=search_query,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
+
+    metadata_list = []
+    for doc in documents:
+        metadata_list.append(DocumentMetadataSchema(
+            document_id=doc.document_id,
+            title=doc.title,
+            mime_type=doc.mime_type,
+            size_bytes=doc.file_size_bytes,
+            source="url" if not doc.file_path else "local_upload",
+            chunk_count=doc.total_chunks,
+            created_at=doc.created_at,
+            custom_metadata=doc.metadata
+        ))
+
+    return DocumentListResponse(
+        documents=metadata_list,
+        total=total
+    )
 
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
@@ -177,20 +229,27 @@ async def delete_document(
     # 1. Delete from PostgreSQL
     deleted = await uow.documents.delete(document_id)
     if not deleted:
+        logger.error(f"Failed to delete document {document_id} from PostgreSQL")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete document from database."
         )
+    logger.info(f"Successfully deleted document {document_id} from PostgreSQL")
 
     # 2. Delete local file
     if document.file_path:
-        storage_service.delete_file(document.file_path)
+        file_deleted = storage_service.delete_file(document.file_path)
+        if not file_deleted:
+            logger.warning(f"Could not delete local file for document {document_id} at {document.file_path}")
+        else:
+            logger.info(f"Successfully deleted local file for document {document_id}")
 
     # 3. Delete from Vector Store
     try:
         await vector_store.delete_by_document_id(str(document_id))
+        logger.info(f"Successfully deleted vector chunks for document {document_id}")
     except Exception as e:
-        logger.error(f"Failed to delete document from vector store: {e}")
+        logger.error(f"Failed to delete document {document_id} from vector store: {e}")
         # Not throwing an error here so the user isn't stuck with a ghost entry in DB
-
+        
     return None
