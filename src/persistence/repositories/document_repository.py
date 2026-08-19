@@ -75,6 +75,69 @@ class DocumentRepository(IDocumentRepository):
             ) for d in db_docs
         ]
 
+    async def get_all_by_user_id_paginated(
+        self,
+        user_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 10,
+        mime_type: Optional[str] = None,
+        upload_status: Optional[str] = None,
+        search_query: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc"
+    ) -> tuple[List[DocumentEntity], int]:
+        from sqlalchemy import func
+        
+        # Base query for counting and selecting
+        base_filters = [DocumentMetadata.user_id == user_id]
+        
+        if mime_type:
+            base_filters.append(DocumentMetadata.mime_type == mime_type)
+        if upload_status:
+            base_filters.append(DocumentMetadata.upload_status == upload_status)
+        if search_query:
+            base_filters.append(DocumentMetadata.title.ilike(f"%{search_query}%"))
+            
+        # Count total items
+        count_stmt = select(func.count(DocumentMetadata.document_id)).where(*base_filters)
+        count_result = await self.session.execute(count_stmt)
+        total_count = count_result.scalar_one()
+        
+        # Fetch paginated and sorted items
+        stmt = select(DocumentMetadata).where(*base_filters)
+        
+        # Sorting logic
+        sort_col = getattr(DocumentMetadata, sort_by, DocumentMetadata.created_at)
+        if sort_order.lower() == "desc":
+            stmt = stmt.order_by(sort_col.desc())
+        else:
+            stmt = stmt.order_by(sort_col.asc())
+            
+        stmt = stmt.offset(skip).limit(limit)
+        
+        result = await self.session.execute(stmt)
+        db_docs = result.scalars().all()
+        
+        documents = [
+            DocumentEntity(
+                document_id=d.document_id,
+                user_id=d.user_id,
+                title=d.title,
+                mime_type=d.mime_type,
+                original_file_name=d.original_file_name,
+                file_path=d.file_path,
+                file_size_bytes=d.file_size_bytes,
+                total_chunks=d.total_chunks,
+                upload_status=d.upload_status,
+                content_hash=d.content_hash,
+                metadata=d.metadata_fields,
+                created_at=d.created_at,
+                updated_at=d.updated_at
+            ) for d in db_docs
+        ]
+        return documents, total_count
+
+
     async def get_by_hash(self, user_id: uuid.UUID, content_hash: str) -> Optional[DocumentEntity]:
         stmt = select(DocumentMetadata).where(
             DocumentMetadata.user_id == user_id,
