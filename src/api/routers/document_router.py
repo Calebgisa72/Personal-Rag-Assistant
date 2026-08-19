@@ -16,6 +16,7 @@ from api.schemas.document_schemas import (
 )
 from core.config import settings
 from core.logger import logger
+from services.ingestion_tasks import process_and_ingest_document
 
 router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
 storage_service = StorageService()
@@ -37,7 +38,7 @@ async def upload_document(
 
     # Save file to local storage
     try:
-        file_path, file_size = await storage_service.save_file(file, max_size=settings.MAX_UPLOAD_SIZE)
+        file_path, file_size, file_hash = await storage_service.save_file(file, max_size=settings.MAX_UPLOAD_SIZE)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -48,6 +49,19 @@ async def upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save file locally."
         )
+    existing_doc = await uow.documents.get_by_hash(DUMMY_USER_ID, file_hash)
+    if existing_doc:
+        storage_service.delete_file(file_path)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "A document with this identical content already exists.",
+                "existing_document_id": str(existing_doc.document_id),
+                "existing_document_title": existing_doc.title,
+                "created_at": existing_doc.created_at.isoformat()
+            }
+        )
+
     document = DocumentEntity(
         title=file.filename or "Untitled",
         mime_type=file.content_type,
@@ -55,7 +69,8 @@ async def upload_document(
         file_path=file_path,
         file_size_bytes=file_size,
         user_id=DUMMY_USER_ID,
-        upload_status="pending"
+        upload_status="pending",
+        content_hash=file_hash
     )
 
     try:
@@ -68,6 +83,9 @@ async def upload_document(
             detail="Failed to save document metadata."
         )
 
+    # Trigger background ingestion task via Celery
+    process_and_ingest_document.delay(str(document.document_id))
+
     metadata_schema = DocumentMetadataSchema(
         document_id=document.document_id,
         title=document.title,
@@ -76,7 +94,7 @@ async def upload_document(
         source="local_upload",
         created_at=document.created_at
     )
-    
+
     return DocumentUploadResponse(
         message="Document uploaded successfully",
         document=metadata_schema
@@ -96,17 +114,33 @@ async def ingest_url(
             failed_urls=[request.url]
         )
 
+    import hashlib
+    text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+    existing_doc = await uow.documents.get_by_hash(DUMMY_USER_ID, text_hash)
+    if existing_doc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "A document with this identical content already exists.",
+                "existing_document_id": str(existing_doc.document_id),
+                "existing_document_title": existing_doc.title,
+                "created_at": existing_doc.created_at.isoformat()
+            }
+        )
+
     file_size = len(text.encode('utf-8'))
-    
+
     document = DocumentEntity(
         title=title,
         mime_type="text/html",
         original_file_name=request.url,
-        file_path="", 
+        file_path="",
         file_size_bytes=file_size,
         user_id=DUMMY_USER_ID,
         upload_status="pending",
-        content=text 
+        content_hash=text_hash,
+        content=text
     )
 
     try:
@@ -117,6 +151,9 @@ async def ingest_url(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save document metadata."
         )
+
+    # Trigger background ingestion task via Celery
+    process_and_ingest_document.delay(str(document.document_id))
 
     return URLIngestionResponse(
         message="URL ingested successfully",
@@ -136,7 +173,7 @@ async def delete_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found."
         )
-    
+
     # 1. Delete from PostgreSQL
     deleted = await uow.documents.delete(document_id)
     if not deleted:
@@ -155,5 +192,5 @@ async def delete_document(
     except Exception as e:
         logger.error(f"Failed to delete document from vector store: {e}")
         # Not throwing an error here so the user isn't stuck with a ghost entry in DB
-        
+
     return None

@@ -29,3 +29,9 @@ class URLIngestionResponse(BaseModel):
     message: str
     documents_ingested: int
     failed_urls: List[str] = Field(default_factory=list)
+
+class DuplicateDocumentError(BaseModel):
+    message: str
+    existing_document_id: uuid.UUID
+    existing_document_title: str
+    created_at: datetime

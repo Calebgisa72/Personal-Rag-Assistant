@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING, Optional
 from sqlalchemy import String, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -22,6 +22,7 @@ class DocumentMetadata(Base):
     file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     total_chunks: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     upload_status: Mapped[str] = mapped_column(String(50), default="pending")
+    content_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     metadata_fields: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict) 
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

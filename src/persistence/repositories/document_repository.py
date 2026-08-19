@@ -22,6 +22,7 @@ class DocumentRepository(IDocumentRepository):
             file_size_bytes=document.file_size_bytes,
             total_chunks=document.total_chunks,
             upload_status=document.upload_status,
+            content_hash=document.content_hash,
             metadata_fields=document.metadata
         )
         self.session.add(db_doc)
@@ -45,6 +46,7 @@ class DocumentRepository(IDocumentRepository):
             file_size_bytes=db_doc.file_size_bytes,
             total_chunks=db_doc.total_chunks,
             upload_status=db_doc.upload_status,
+            content_hash=db_doc.content_hash,
             metadata=db_doc.metadata_fields,
             created_at=db_doc.created_at,
             updated_at=db_doc.updated_at
@@ -66,11 +68,38 @@ class DocumentRepository(IDocumentRepository):
                 file_size_bytes=d.file_size_bytes,
                 total_chunks=d.total_chunks,
                 upload_status=d.upload_status,
+                content_hash=d.content_hash,
                 metadata=d.metadata_fields,
                 created_at=d.created_at,
                 updated_at=d.updated_at
             ) for d in db_docs
         ]
+
+    async def get_by_hash(self, user_id: uuid.UUID, content_hash: str) -> Optional[DocumentEntity]:
+        stmt = select(DocumentMetadata).where(
+            DocumentMetadata.user_id == user_id,
+            DocumentMetadata.content_hash == content_hash
+        )
+        result = await self.session.execute(stmt)
+        db_doc = result.scalar_one_or_none()
+        if not db_doc:
+            return None
+        
+        return DocumentEntity(
+            document_id=db_doc.document_id,
+            user_id=db_doc.user_id,
+            title=db_doc.title,
+            mime_type=db_doc.mime_type,
+            original_file_name=db_doc.original_file_name,
+            file_path=db_doc.file_path,
+            file_size_bytes=db_doc.file_size_bytes,
+            total_chunks=db_doc.total_chunks,
+            upload_status=db_doc.upload_status,
+            content_hash=db_doc.content_hash,
+            metadata=db_doc.metadata_fields,
+            created_at=db_doc.created_at,
+            updated_at=db_doc.updated_at
+        )
 
     async def update_status(self, document_id: uuid.UUID, status: str) -> bool:
         stmt = select(DocumentMetadata).where(DocumentMetadata.document_id == document_id)
