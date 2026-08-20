@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "RAG SaaS Platform"
@@ -32,8 +32,20 @@ class Settings(BaseSettings):
     # Uploads
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
-    ALLOWED_MIME_TYPES: list[str] = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain", "text/csv"]
+    ALLOWED_MIME_TYPES: list[str] = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+        "text/csv",
+    ]
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Conversational Memory
+    MAX_MESSAGES_BEFORE_SUMMARY: int = 15
+    MESSAGES_TO_KEEP_AFTER_SUMMARY: int = 10
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
 
 settings = Settings()
