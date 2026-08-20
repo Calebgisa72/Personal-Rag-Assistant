@@ -5,13 +5,14 @@ from domain.entities import DocumentEntity, DocumentChunk
 from core.config import settings
 import uuid
 
+
 class SemanticChunkingService:
     def __init__(self):
         # Fallback/standard splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.CHUNK_SIZE,
             chunk_overlap=settings.CHUNK_OVERLAP,
-            separators=["\n\n", "\n", ". ", " ", ""]
+            separators=["\n\n", "\n", ". ", " ", ""],
         )
 
         # Markdown header splitters for documents parsed with structure
@@ -20,11 +21,13 @@ class SemanticChunkingService:
             ("##", "Header 2"),
             ("###", "Header 3"),
         ]
-        self.markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+        self.markdown_splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=headers_to_split_on
+        )
 
     def chunk_document(self, document: DocumentEntity) -> List[DocumentChunk]:
         """
-        Chunks a document semantically. For Markdown-like text (or text structured with headers), 
+        Chunks a document semantically. For Markdown-like text (or text structured with headers),
         it uses MarkdownHeaderTextSplitter. Otherwise, falls back to RecursiveCharacterTextSplitter.
         """
         # A simple heuristic: if the text contains markdown headers, use markdown splitter
@@ -41,9 +44,9 @@ class SemanticChunkingService:
                     "title": document.title,
                     "mime_type": document.mime_type,
                     **document.metadata,
-                    **doc.metadata # Includes header info
+                    **doc.metadata,  # Includes header info
                 }
-                
+
                 chunk = DocumentChunk(
                     chunk_id=uuid.uuid4(),
                     content=doc.page_content,
@@ -52,7 +55,7 @@ class SemanticChunkingService:
                     total_chunks=total_chunks,
                     metadata=combined_metadata,
                     source=document.metadata.get("source", "unknown"),
-                    page_number=document.metadata.get("page_number", None)
+                    page_number=document.metadata.get("page_number", None),
                 )
                 chunks.append(chunk)
         else:
@@ -69,11 +72,11 @@ class SemanticChunkingService:
                     metadata={
                         "title": document.title,
                         "mime_type": document.mime_type,
-                        **document.metadata
+                        **document.metadata,
                     },
                     source=document.metadata.get("source", "unknown"),
-                    page_number=document.metadata.get("page_number", None)
+                    page_number=document.metadata.get("page_number", None),
                 )
                 chunks.append(chunk)
-                
+
         return chunks

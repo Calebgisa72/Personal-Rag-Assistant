@@ -1,5 +1,10 @@
 from persistence.database import AsyncSessionLocal
-from persistence.repositories import UserRepository, ConversationRepository, DocumentRepository
+from persistence.repositories import (
+    UserRepository,
+    ConversationRepository,
+    DocumentRepository,
+)
+
 
 class UnitOfWork:
     def __init__(self):

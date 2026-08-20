@@ -13,6 +13,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from core.logger import logger
 
+
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request_id = str(uuid.uuid4())
@@ -29,15 +30,18 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             url=str(request.url),
             request_id=request_id,
             process_time_ms=round(process_time * 1000, 2),
-            status_code=response.status_code
+            status_code=response.status_code,
         )
         response.headers["X-Request-ID"] = request_id
         return response
 
+
 def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RateLimitExceededError)
-    async def _rate_limit_handler(request: Request, exc: RateLimitExceededError) -> JSONResponse:
+    async def _rate_limit_handler(
+        request: Request, exc: RateLimitExceededError
+    ) -> JSONResponse:
         logger.warning("rate_limit.exceeded", detail=str(exc))
         return JSONResponse(status_code=429, content={"detail": str(exc)})
 
@@ -50,12 +54,14 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _not_found_handler(request: Request, exc: NotFoundError) -> JSONResponse:
         logger.warning("resource.not_found", detail=str(exc))
         return JSONResponse(status_code=404, content={"detail": str(exc)})
-        
+
     @app.exception_handler(ValidationError)
-    async def _validation_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    async def _validation_handler(
+        request: Request, exc: ValidationError
+    ) -> JSONResponse:
         logger.warning("validation.error", detail=str(exc))
         return JSONResponse(status_code=400, content={"detail": str(exc)})
-        
+
     # Catch all other base app errors, which will be logged as rag_app.error
     @app.exception_handler(BaseAppError)
     async def _generic_handler(request: Request, exc: BaseAppError) -> JSONResponse:
@@ -67,7 +73,6 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code = 403
         elif exc.__class__.__name__ in ["InvalidRequestError"]:
             status_code = 400
-            
+
         logger.error("rag_app.error", exc_type=exc.__class__.__name__, detail=str(exc))
         return JSONResponse(status_code=status_code, content={"detail": str(exc)})
-

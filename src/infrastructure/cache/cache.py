@@ -3,6 +3,7 @@ import redis.asyncio as redis
 
 from domain.interfaces import ICache
 
+
 class Cache(ICache):
     def __init__(self, client: redis.Redis):
         self.client = client

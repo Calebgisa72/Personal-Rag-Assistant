@@ -1,6 +1,7 @@
 import redis.asyncio as redis
 from core.config import settings
 
+
 class RedisClientManager:
     _pool = None
 
@@ -15,6 +16,7 @@ class RedisClientManager:
     @classmethod
     def get_client(cls):
         return redis.Redis(connection_pool=cls.get_pool())
+
 
 async def get_redis_client():
     client = RedisClientManager.get_client()

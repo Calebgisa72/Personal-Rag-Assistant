@@ -7,6 +7,7 @@ from domain.interfaces import IUserRepository
 from domain.entities import UserEntity
 from infrastructure.database.models import User
 
+
 class UserRepository(IUserRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -19,11 +20,11 @@ class UserRepository(IUserRepository):
             hashed_password=user.hashed_password,
             profile_pic=user.profile_pic,
             is_active=user.is_active,
-            is_superuser=user.is_superuser
+            is_superuser=user.is_superuser,
         )
         self.session.add(db_user)
         await self.session.flush()
-        
+
         # Return a safe entity without the password
         return UserEntity(
             user_id=db_user.user_id,
@@ -33,7 +34,7 @@ class UserRepository(IUserRepository):
             is_active=db_user.is_active,
             is_superuser=db_user.is_superuser,
             created_at=db_user.created_at,
-            updated_at=db_user.updated_at
+            updated_at=db_user.updated_at,
         )
 
     async def get_by_id(self, user_id: uuid.UUID) -> Optional[UserEntity]:
@@ -51,7 +52,7 @@ class UserRepository(IUserRepository):
             is_active=db_user.is_active,
             is_superuser=db_user.is_superuser,
             created_at=db_user.created_at,
-            updated_at=db_user.updated_at
+            updated_at=db_user.updated_at,
         )
 
     async def get_by_email(self, email: str) -> Optional[UserEntity]:
@@ -69,7 +70,7 @@ class UserRepository(IUserRepository):
             is_active=db_user.is_active,
             is_superuser=db_user.is_superuser,
             created_at=db_user.created_at,
-            updated_at=db_user.updated_at
+            updated_at=db_user.updated_at,
         )
 
     async def get_auth_user_by_email(self, email: str) -> Optional[UserEntity]:
@@ -87,5 +88,5 @@ class UserRepository(IUserRepository):
             is_active=db_user.is_active,
             is_superuser=db_user.is_superuser,
             created_at=db_user.created_at,
-            updated_at=db_user.updated_at
+            updated_at=db_user.updated_at,
         )
