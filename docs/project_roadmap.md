@@ -1,6 +1,12 @@
 # Personal RAG Assistant - Project Roadmap
 
-This roadmap outlines the chronological development plan to elevate the Personal RAG Assistant to a producgical development plan to elevate the Personal RAG Assistant to a production-ready, highly professional standard. Tasks are grouped logically by the branches they should be developed on.
+This roadmap outlines the chronological development plan to elevate the Personal RAG Assistant to a production-ready, highly professional standard. Tasks are grouped logically by the branches they should be developed on.
+
+## Core Architectural Standards
+To ensure this remains a senior-level, world-class project, all branches MUST adhere to:
+1. **Clean Architecture**: API Routers must **never** contain business logic. All logic must be pushed down to Application Services (e.g., `DocumentService`).
+2. **Dependency Injection**: Use FastAPI `Depends()` for all service and repository instantiation. No global instances.
+3. **Decoupled Background Tasks**: Celery workers must be thin wrappers that inject an Application Service and call its methods.
 
 ---
 
