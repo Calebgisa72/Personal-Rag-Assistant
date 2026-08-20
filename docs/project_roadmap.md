@@ -7,6 +7,7 @@ To ensure this remains a senior-level, world-class project, all branches MUST ad
 1. **Clean Architecture**: API Routers must **never** contain business logic. All logic must be pushed down to Application Services (e.g., `DocumentService`).
 2. **Dependency Injection**: Use FastAPI `Depends()` for all service and repository instantiation. No global instances.
 3. **Decoupled Background Tasks**: Celery workers must be thin wrappers that inject an Application Service and call its methods.
+4. **Best Python Formatting**: AI should always follow best Python formatting practices (e.g. PEP 8, Black style) when writing code, to avoid needing to use the Black extension later.
 
 ---
 
@@ -55,7 +56,7 @@ To ensure this remains a senior-level, world-class project, all branches MUST ad
 ## Branch: `feature/05-conversational-memory-and-context`
 **Goal:** Implement a senior-level RAG context strategy that includes conversational memory and smart summarization.
 
-- [ ] **Save Chat History:** Update `ChatRequest` to accept a `conversation_id`. If provided, fetch past messages from Postgres. Save the new user question and AI answer to the DB.
+- [ ] **Save Chat History:** Update `ChatRequest` to accept a `conversation_id`. Each chat sent should have a conversation id created for it, if it is a new chat, or if it is an existing chat, fetch past messages from that conversation using the conversation id and save the new user question and AI answer to the DB.
 - [ ] **History Summarization Strategy:**
   - Implement a background task or inline check: if `len(messages) >= 15` in a conversation, trigger the LLM to generate a compressed summary of the older messages.
   - Save this summary to a new `ConversationSummary` table/column.
@@ -64,7 +65,7 @@ To ensure this remains a senior-level, world-class project, all branches MUST ad
   - Append the **last 10 messages** verbatim for immediate context.
   - Inject the **Top-K Vector Store Chunks** based on the current user query.
   - Append the **Current User Prompt**.
-- [ ] **Prompt Engineering:** Refine the system prompt to instruct the AI on how to weigh the conversational memory vs. the factual retrieved chunks.
+- [ ] **Prompt Engineering:** Refine the system prompt to instruct the AI on how to weigh the conversational memory vs. the factual retrieved chunks, for better separation of concerns, make a separate folder that will contain system prompts of different things, for now we have chat only, but we may add more as we expand the project.
 
 ---
 

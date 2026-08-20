@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from domain.interfaces import IConversationRepository
-from domain.entities import ConversationEntity, MessageEntity
-from infrastructure.database.models import Conversation, Message
+from domain.entities import ConversationEntity, MessageEntity, ConversationSummaryEntity
+from infrastructure.database.models import Conversation, Message, ConversationSummary
+
 
 class ConversationRepository(IConversationRepository):
     def __init__(self, session: AsyncSession):
@@ -16,51 +17,76 @@ class ConversationRepository(IConversationRepository):
         db_conv = Conversation(
             conversation_id=conversation.conversation_id,
             user_id=conversation.user_id,
-            title=conversation.title
+            title=conversation.title,
         )
         self.session.add(db_conv)
         await self.session.flush()
         return conversation
 
-    async def get_by_id(self, conversation_id: uuid.UUID) -> Optional[ConversationEntity]:
-        stmt = select(Conversation).options(selectinload(Conversation.messages)).where(Conversation.conversation_id == conversation_id)
+    async def get_by_id(
+        self, conversation_id: uuid.UUID
+    ) -> Optional[ConversationEntity]:
+        stmt = (
+            select(Conversation)
+            .options(
+                selectinload(Conversation.messages), selectinload(Conversation.summary)
+            )
+            .where(Conversation.conversation_id == conversation_id)
+        )
         result = await self.session.execute(stmt)
         db_conv = result.scalar_one_or_none()
         if not db_conv:
             return None
-        
+
         messages = [
             MessageEntity(
                 message_id=m.message_id,
                 conversation_id=m.conversation_id,
                 role=m.role,
                 content=m.content,
-                created_at=m.created_at
-            ) for m in db_conv.messages
+                created_at=m.created_at,
+            )
+            for m in db_conv.messages
         ]
+
+        summary_entity = None
+        if db_conv.summary:
+            summary_entity = ConversationSummaryEntity(
+                summary_id=db_conv.summary.summary_id,
+                conversation_id=db_conv.summary.conversation_id,
+                summary=db_conv.summary.summary,
+                message_count=db_conv.summary.message_count,
+                last_summarized_at=db_conv.summary.last_summarized_at,
+            )
 
         return ConversationEntity(
             conversation_id=db_conv.conversation_id,
             user_id=db_conv.user_id,
             title=db_conv.title,
             messages=messages,
+            summary=summary_entity,
             created_at=db_conv.created_at,
-            updated_at=db_conv.updated_at
+            updated_at=db_conv.updated_at,
         )
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> List[ConversationEntity]:
-        stmt = select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
+        stmt = (
+            select(Conversation)
+            .where(Conversation.user_id == user_id)
+            .order_by(Conversation.created_at.desc())
+        )
         result = await self.session.execute(stmt)
         db_convs = result.scalars().all()
-        
+
         return [
             ConversationEntity(
                 conversation_id=c.conversation_id,
                 user_id=c.user_id,
                 title=c.title,
                 created_at=c.created_at,
-                updated_at=c.updated_at
-            ) for c in db_convs
+                updated_at=c.updated_at,
+            )
+            for c in db_convs
         ]
 
     async def add_message(self, message: MessageEntity) -> MessageEntity:
@@ -68,8 +94,54 @@ class ConversationRepository(IConversationRepository):
             message_id=message.message_id,
             conversation_id=message.conversation_id,
             role=message.role,
-            content=message.content
+            content=message.content,
         )
         self.session.add(db_msg)
         await self.session.flush()
         return message
+
+    async def save_summary(
+        self, summary: ConversationSummaryEntity
+    ) -> ConversationSummaryEntity:
+        stmt = select(ConversationSummary).where(
+            ConversationSummary.conversation_id == summary.conversation_id
+        )
+        result = await self.session.execute(stmt)
+        db_summary = result.scalar_one_or_none()
+
+        if db_summary:
+            db_summary.summary = summary.summary
+            db_summary.message_count = summary.message_count
+            db_summary.last_summarized_at = summary.last_summarized_at
+        else:
+            db_summary = ConversationSummary(
+                summary_id=summary.summary_id,
+                conversation_id=summary.conversation_id,
+                summary=summary.summary,
+                message_count=summary.message_count,
+                last_summarized_at=summary.last_summarized_at,
+            )
+            self.session.add(db_summary)
+
+        await self.session.flush()
+        return summary
+
+    async def trim_messages(self, conversation_id: uuid.UUID, keep_last: int):
+        from sqlalchemy import delete
+
+        stmt = (
+            select(Message.message_id)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.desc())
+            .limit(keep_last)
+        )
+        result = await self.session.execute(stmt)
+        kept_ids = [row[0] for row in result.all()]
+
+        if kept_ids:
+            del_stmt = delete(Message).where(
+                Message.conversation_id == conversation_id,
+                Message.message_id.not_in(kept_ids),
+            )
+            await self.session.execute(del_stmt)
+            await self.session.flush()
