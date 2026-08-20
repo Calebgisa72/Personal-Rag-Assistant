@@ -6,6 +6,10 @@ from infrastructure.vector_store.chroma_adapter import ChromaDBVectorStore
 from services.embedding_service import EmbeddingStrategyService
 from services.rag_service import RAGService
 from infrastructure.document.chunking import ChunkingService
+from services.storage_service import StorageService
+from services.url_scraper_service import URLScraperService
+from services.document_service import DocumentService
+import uuid
 
 # ==============================================================================
 # 1. Core Clients (Application-scoped singletons)
@@ -43,6 +47,75 @@ def get_rag_service(
 ):
     return RAGService(embedding_service, ai_provider, vector_store)
 
+from functools import lru_cache
+from fastapi import Depends
+
+from infrastructure.ai.amali_provider import AmaliAIProvider
+from infrastructure.vector_store.chroma_adapter import ChromaDBVectorStore
+from services.embedding_service import EmbeddingStrategyService
+from services.rag_service import RAGService
+from infrastructure.document.chunking import ChunkingService
+from services.storage_service import StorageService
+from services.url_scraper_service import URLScraperService
+from services.document_service import DocumentService
+import uuid
+
+# ==============================================================================
+# 1. Core Clients (Application-scoped singletons)
+# We use @lru_cache here because initializing these providers can be "heavy" 
+# (e.g., opening network connection pools, loading heavy client libraries).
+# Caching them ensures we reuse the same instance across all API requests.
+# ==============================================================================
+
+@lru_cache(maxsize=1)
+def get_ai_provider():
+    return AmaliAIProvider()
+
+@lru_cache(maxsize=1)
+def get_vector_store():
+    return ChromaDBVectorStore()
+
+# ==============================================================================
+# 2. Application Services (Instantiated per-request)
+# We do NOT use @lru_cache here. Instantiating these classes is extremely cheap
+# (just variable assignment). FastAPI will pass the cached singleton clients 
+# into these services automatically.
+# ==============================================================================
+
+def get_embedding_service(ai_provider = Depends(get_ai_provider)):
+    return EmbeddingStrategyService(ai_provider=ai_provider)
+
+def get_chunking_service():
+    """Currently available in the app, used for document processing."""
+    return ChunkingService()
+
+def get_rag_service(
+    embedding_service = Depends(get_embedding_service),
+    ai_provider = Depends(get_ai_provider),
+    vector_store = Depends(get_vector_store)
+):
+    return RAGService(embedding_service, ai_provider, vector_store)
+
+def get_storage_service():
+    return StorageService()
+
+def get_url_scraper_service():
+    return URLScraperService()
+
+from persistence.uow import UnitOfWork
+
+async def get_uow():
+    async with UnitOfWork() as uow:
+        yield uow
+
+def get_document_service(
+    uow = Depends(get_uow),
+    storage_service = Depends(get_storage_service),
+    url_scraper_service = Depends(get_url_scraper_service),
+    vector_store = Depends(get_vector_store)
+):
+    return DocumentService(uow, storage_service, url_scraper_service, vector_store)
+
 # ==============================================================================
 # 3. Future Roadmap Dependencies (Stubs)
 # These are place-holders based on the project_roadmap.md. You can implement
@@ -65,12 +138,10 @@ def get_rag_service(
 #     pass
 
 # def get_current_user(token: str = Depends(oauth2_scheme)):
-#     \"\"\"Authenticates the user via JWT and returns the User entity.\"\"\"
+#     """Authenticates the user via JWT and returns the User entity."""
 #     # return user
 #     pass
 
-from persistence.uow import UnitOfWork
-
-async def get_uow():
-    async with UnitOfWork() as uow:
-        yield uow
+def get_current_user() -> uuid.UUID:
+    """Mock user dependency until proper auth is implemented."""
+    return uuid.UUID(int=1)

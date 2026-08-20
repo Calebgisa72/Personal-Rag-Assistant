@@ -11,6 +11,12 @@ This platform implements a **Clean Architecture** (Domain-Driven Design) to ensu
 5. **Persistence Layer (`src/persistence`)**: Handles the database schema and queries. Uses SQLAlchemy 2.x async, the Repository pattern, and Unit of Work to manage transaction boundaries.
 6. **Core Layer (`src/core`)**: Cross-cutting concerns such as configuration (`Pydantic BaseSettings`), structured logging (`structlog`), exceptions, and middleware.
 
+## Architectural Invariants (World-Class Standards)
+To maintain a senior-level codebase, the following invariants MUST be strictly followed:
+1. **No Business Logic in Routers**: The API Layer (`routers`) must never contain business logic, such as data manipulation, validation of domain concepts, direct file system interactions, or calling repositories directly. Routers should strictly parse requests, delegate to the Service Layer, and map responses.
+2. **Dependency Injection**: All dependencies (services, repositories, config) must be injected via FastAPI's `Depends` or passed through constructors. No direct instantiation of classes inside function logic or global scopes.
+3. **Thin Background Workers**: Celery tasks (or any background workers) should act as thin wrappers that instantiate or receive an Application Service and invoke a method on it. Do not duplicate service layer logic or dependency orchestration inside a background worker file.
+
 ## Scalability and Maintainability
 * **Separation of Concerns**: Because external providers are abstracted via interfaces in the Domain layer, swapping ChromaDB for Pinecone or Amali AI for another LLM provider requires zero changes to the business logic.
 * **Concurrency**: Using `httpx.AsyncClient` alongside asynchronous data fetching (Postgres + Redis) prevents I/O blocking. The custom Amali AI embedding provider specifically implements concurrent gathering (`asyncio.gather`) for single-string embedding constraints, enabling parallel batch processing.

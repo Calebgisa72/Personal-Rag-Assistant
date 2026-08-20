@@ -1,13 +1,9 @@
 import uuid
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
-from typing import List
+from typing import Optional
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 
-from api.dependencies import get_uow, get_vector_store
-from persistence.uow import UnitOfWork
-from infrastructure.vector_store.chroma_adapter import ChromaDBVectorStore
-from services.storage_service import StorageService
-from services.url_scraper_service import URLScraperService
-from domain.entities import DocumentEntity
+from api.dependencies import get_document_service, get_current_user
+from services.document_service import DocumentService
 from api.schemas.document_schemas import (
     DocumentUploadResponse,
     DocumentMetadataSchema,
@@ -15,18 +11,8 @@ from api.schemas.document_schemas import (
     URLIngestionResponse,
     DocumentListResponse
 )
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
-from typing import List, Optional
-from core.config import settings
-from core.logger import logger
-from services.ingestion_tasks import process_and_ingest_document
 
 router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
-storage_service = StorageService()
-url_scraper_service = URLScraperService()
-
-# Hardcoded user ID for now since Auth is not implemented
-DUMMY_USER_ID = uuid.UUID(int=1)
 
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
@@ -37,20 +23,12 @@ async def list_documents(
     search_query: Optional[str] = Query(None, description="Search by title"),
     sort_by: str = Query("created_at", description="Field to sort by (created_at, file_size_bytes, title)"),
     sort_order: str = Query("desc", description="Sort order (asc or desc)"),
-    uow: UnitOfWork = Depends(get_uow)
+    document_service: DocumentService = Depends(get_document_service),
+    current_user_id: uuid.UUID = Depends(get_current_user)
 ):
-    valid_sort_fields = ["created_at", "file_size_bytes", "title"]
-    if sort_by not in valid_sort_fields:
-        sort_by = "created_at"
-        
-    if sort_order.lower() not in ["asc", "desc"]:
-        sort_order = "desc"
-
-    skip = (page - 1) * limit
-
-    documents, total = await uow.documents.get_all_by_user_id_paginated(
-        user_id=DUMMY_USER_ID,
-        skip=skip,
+    documents, total = await document_service.list_documents(
+        user_id=current_user_id,
+        page=page,
         limit=limit,
         mime_type=mime_type,
         upload_status=upload_status,
@@ -80,63 +58,32 @@ async def list_documents(
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
     file: UploadFile = File(...),
-    uow: UnitOfWork = Depends(get_uow)
+    document_service: DocumentService = Depends(get_document_service),
+    current_user_id: uuid.UUID = Depends(get_current_user)
 ):
-    if file.content_type not in settings.ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"MIME type {file.content_type} not allowed."
-        )
-
-    # Save file to local storage
     try:
-        file_path, file_size, file_hash = await storage_service.save_file(file, max_size=settings.MAX_UPLOAD_SIZE)
+        document = await document_service.upload_document(current_user_id, file)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save file locally."
-        )
-    existing_doc = await uow.documents.get_by_hash(DUMMY_USER_ID, file_hash)
-    if existing_doc:
-        storage_service.delete_file(file_path)
+    except FileExistsError as e:
+        existing_doc = e.args[1]
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "message": "A document with this identical content already exists.",
+                "message": str(e),
                 "existing_document_id": str(existing_doc.document_id),
                 "existing_document_title": existing_doc.title,
                 "created_at": existing_doc.created_at.isoformat()
             }
         )
-
-    document = DocumentEntity(
-        title=file.filename or "Untitled",
-        mime_type=file.content_type,
-        original_file_name=file.filename or "Unknown",
-        file_path=file_path,
-        file_size_bytes=file_size,
-        user_id=DUMMY_USER_ID,
-        upload_status="pending",
-        content_hash=file_hash
-    )
-
-    try:
-        await uow.documents.create(document)
     except Exception as e:
-        storage_service.delete_file(file_path)
-        logger.error(f"Failed to save document metadata: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save document metadata."
+            detail="Failed to save file locally or save metadata."
         )
-
-    # Trigger background ingestion task via Celery
-    process_and_ingest_document.delay(str(document.document_id))
 
     metadata_schema = DocumentMetadataSchema(
         document_id=document.document_id,
@@ -155,57 +102,28 @@ async def upload_document(
 @router.post("/url", response_model=URLIngestionResponse)
 async def ingest_url(
     request: URLIngestionRequest,
-    uow: UnitOfWork = Depends(get_uow)
+    document_service: DocumentService = Depends(get_document_service),
+    current_user_id: uuid.UUID = Depends(get_current_user)
 ):
     try:
-        title, text = await url_scraper_service.scrape(request.url)
+        await document_service.ingest_url(current_user_id, request.url)
+    except FileExistsError as e:
+        existing_doc = e.args[1]
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(e),
+                "existing_document_id": str(existing_doc.document_id),
+                "existing_document_title": existing_doc.title,
+                "created_at": existing_doc.created_at.isoformat()
+            }
+        )
     except Exception as e:
         return URLIngestionResponse(
             message="Failed to scrape URL",
             documents_ingested=0,
             failed_urls=[request.url]
         )
-
-    import hashlib
-    text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
-
-    existing_doc = await uow.documents.get_by_hash(DUMMY_USER_ID, text_hash)
-    if existing_doc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": "A document with this identical content already exists.",
-                "existing_document_id": str(existing_doc.document_id),
-                "existing_document_title": existing_doc.title,
-                "created_at": existing_doc.created_at.isoformat()
-            }
-        )
-
-    file_size = len(text.encode('utf-8'))
-
-    document = DocumentEntity(
-        title=title,
-        mime_type="text/html",
-        original_file_name=request.url,
-        file_path="",
-        file_size_bytes=file_size,
-        user_id=DUMMY_USER_ID,
-        upload_status="pending",
-        content_hash=text_hash,
-        content=text
-    )
-
-    try:
-        await uow.documents.create(document)
-    except Exception as e:
-        logger.error(f"Failed to save document metadata: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save document metadata."
-        )
-
-    # Trigger background ingestion task via Celery
-    process_and_ingest_document.delay(str(document.document_id))
 
     return URLIngestionResponse(
         message="URL ingested successfully",
@@ -216,40 +134,25 @@ async def ingest_url(
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_document(
     document_id: uuid.UUID,
-    uow: UnitOfWork = Depends(get_uow),
-    vector_store: ChromaDBVectorStore = Depends(get_vector_store)
+    document_service: DocumentService = Depends(get_document_service),
+    current_user_id: uuid.UUID = Depends(get_current_user)
 ):
-    document = await uow.documents.get_by_id(document_id)
-    if not document:
+    try:
+        deleted = await document_service.delete_document(current_user_id, document_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found."
+            )
+    except PermissionError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not own this document"
         )
-
-    # 1. Delete from PostgreSQL
-    deleted = await uow.documents.delete(document_id)
-    if not deleted:
-        logger.error(f"Failed to delete document {document_id} from PostgreSQL")
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete document from database."
+            detail="Failed to delete document."
         )
-    logger.info(f"Successfully deleted document {document_id} from PostgreSQL")
 
-    # 2. Delete local file
-    if document.file_path:
-        file_deleted = storage_service.delete_file(document.file_path)
-        if not file_deleted:
-            logger.warning(f"Could not delete local file for document {document_id} at {document.file_path}")
-        else:
-            logger.info(f"Successfully deleted local file for document {document_id}")
-
-    # 3. Delete from Vector Store
-    try:
-        await vector_store.delete_by_document_id(str(document_id))
-        logger.info(f"Successfully deleted vector chunks for document {document_id}")
-    except Exception as e:
-        logger.error(f"Failed to delete document {document_id} from vector store: {e}")
-        # Not throwing an error here so the user isn't stuck with a ghost entry in DB
-        
     return None
