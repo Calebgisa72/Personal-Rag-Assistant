@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 import uuid
 from datetime import datetime
 
+
 @dataclass
 class DocumentChunk:
     content: str
@@ -14,6 +15,7 @@ class DocumentChunk:
     page_number: Optional[int] = None
     source: Optional[str] = None
 
+
 @dataclass
 class DocumentEntity:
     title: str
@@ -23,7 +25,7 @@ class DocumentEntity:
     file_size_bytes: int
     user_id: uuid.UUID
     total_chunks: Optional[int] = None
-    upload_status: str = "pending" # pending, processed, failed
+    upload_status: str = "pending"  # pending, processed, failed
     document_id: uuid.UUID = field(default_factory=uuid.uuid4)
     metadata: Dict[str, Any] = field(default_factory=dict)
     content_hash: Optional[str] = None

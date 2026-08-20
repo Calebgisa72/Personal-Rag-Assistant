@@ -5,15 +5,18 @@ from domain.interfaces import IVectorStore
 from domain.entities import DocumentChunk
 from core.config import settings
 
+
 class ChromaDBVectorStore(IVectorStore):
     def __init__(self, collection_name: str = "rag_collection"):
         self.client = chromadb.PersistentClient(
             path=settings.CHROMA_PERSIST_DIRECTORY,
-            settings=ChromaSettings(anonymized_telemetry=False)
+            settings=ChromaSettings(anonymized_telemetry=False),
         )
         self.collection = self.client.get_or_create_collection(name=collection_name)
 
-    async def upsert(self, chunks: List[DocumentChunk], embeddings: List[List[float]]) -> None:
+    async def upsert(
+        self, chunks: List[DocumentChunk], embeddings: List[List[float]]
+    ) -> None:
         ids = [str(chunk.chunk_id) for chunk in chunks]
         documents = [chunk.content for chunk in chunks]
         metadatas = []
@@ -31,29 +34,30 @@ class ChromaDBVectorStore(IVectorStore):
         # Chroma doesn't natively support async yet, but we wrap it in a pseudo-async interface
         # for architectural consistency. Real implementations could offload this to a threadpool.
         self.collection.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas
+            ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas
         )
 
-    async def similarity_search(self, query_embedding: List[float], k: int = 5, filter_dict: Optional[Dict[str, Any]] = None) -> List[DocumentChunk]:
+    async def similarity_search(
+        self,
+        query_embedding: List[float],
+        k: int = 5,
+        filter_dict: Optional[Dict[str, Any]] = None,
+    ) -> List[DocumentChunk]:
         results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=k,
-            where=filter_dict
+            query_embeddings=[query_embedding], n_results=k, where=filter_dict
         )
-        
+
         chunks = []
         if not results["ids"] or not results["ids"][0]:
             return chunks
-            
+
         for i in range(len(results["ids"][0])):
             chunk_id_str = results["ids"][0][i]
             content = results["documents"][0][i]
             meta = results["metadatas"][0][i] if results["metadatas"] else {}
-            
+
             import uuid
+
             chunk = DocumentChunk(
                 chunk_id=uuid.UUID(chunk_id_str),
                 content=content,
@@ -61,11 +65,11 @@ class ChromaDBVectorStore(IVectorStore):
                 chunk_index=meta.get("chunk_index", 0),
                 page_number=meta.get("page_number"),
                 source=meta.get("source"),
-                metadata=meta
+                metadata=meta,
             )
             chunks.append(chunk)
-            
+
         return chunks
 
     async def delete_by_document_id(self, document_id: str) -> None:
-        self.collection.delete(where={"document_id": document_id})
+        self.collection.delete(where={"document_id": document_id})

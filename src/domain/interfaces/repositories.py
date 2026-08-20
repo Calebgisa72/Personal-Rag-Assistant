@@ -1,10 +1,17 @@
 from abc import ABC, abstractmethod
 import uuid
 from typing import Optional, List
-from domain.entities import UserEntity, ConversationEntity, MessageEntity, DocumentEntity
+from domain.entities import (
+    UserEntity,
+    ConversationEntity,
+    MessageEntity,
+    DocumentEntity,
+)
+
 
 class IRepository(ABC):
     pass
+
 
 class IUserRepository(IRepository):
     @abstractmethod
@@ -24,13 +31,16 @@ class IUserRepository(IRepository):
         """Returns the user including the hashed_password for authentication purposes."""
         pass
 
+
 class IConversationRepository(IRepository):
     @abstractmethod
     async def create(self, conversation: ConversationEntity) -> ConversationEntity:
         pass
 
     @abstractmethod
-    async def get_by_id(self, conversation_id: uuid.UUID) -> Optional[ConversationEntity]:
+    async def get_by_id(
+        self, conversation_id: uuid.UUID
+    ) -> Optional[ConversationEntity]:
         pass
 
     @abstractmethod
@@ -40,6 +50,7 @@ class IConversationRepository(IRepository):
     @abstractmethod
     async def add_message(self, message: MessageEntity) -> MessageEntity:
         pass
+
 
 class IDocumentRepository(IRepository):
     @abstractmethod
@@ -64,7 +75,7 @@ class IDocumentRepository(IRepository):
         upload_status: Optional[str] = None,
         search_query: Optional[str] = None,
         sort_by: str = "created_at",
-        sort_order: str = "desc"
+        sort_order: str = "desc",
     ) -> tuple[List[DocumentEntity], int]:
         """Returns a paginated list of documents matching the filters, and the total count."""
         pass
