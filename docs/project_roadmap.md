@@ -84,3 +84,22 @@ To ensure this remains a senior-level, world-class project, all branches MUST ad
 - [ ] **Dockerization:** Create `Dockerfile` and `docker-compose.yml` (including PostgreSQL and ChromaDB services).
 - [ ] **CI/CD Pipeline:** Setup GitHub Actions for linting (Ruff/Black) and basic unit testing (Pytest).
 - [ ] **Logging & Monitoring:** Integrate structured JSON logging and potentially an APM like DataDog or Sentry.
+
+---
+
+## Senior Architectural & RAG Enhancements (Future Roadmap)
+**Goal:** Evolve the system into an enterprise-grade AI conversational platform.
+
+### High Priority
+- [ ] **RAG Evaluation Framework**: Implement RAGAS or TruLens for automated evaluation of retrieval precision, context recall, and answer faithfulness.
+- [ ] **Hybrid Search & Re-ranking**: Integrate BM25 alongside vector search, followed by a cross-encoder re-ranking step (e.g., Cohere Rerank) to dramatically improve context relevance.
+- [ ] **Rate Limiting & Cost Control**: Implement Redis-based API rate limiting per user, and track token usage/cost per conversation to prevent AI budget drain.
+
+### Medium Priority
+- [ ] **Query Rewriting & Multi-Query**: Instead of searching directly with the raw user prompt, use a lightweight LLM call to expand/rewrite the query into multiple perspectives for better vector recall.
+- [ ] **Citation & Source Attribution**: Force the LLM to output citations matching the chunk IDs used. The UI can then render inline citations pointing exactly to the source document and page number.
+- [ ] **Redis Caching**: Cache identical semantic queries or embeddings using a Redis Semantic Cache to reduce latency and provider costs.
+
+### Advanced / Security
+- [ ] **Prompt Injection Protection**: Implement an input firewall (e.g., Llama Guard or similar) to detect malicious instructions before they reach the main RAG prompt.
+- [ ] **Data Retention & Privacy Controls**: Allow users to configure retention periods (e.g., "delete conversation history after 30 days") and ensure proper cascading deletion across Postgres, Storage, and ChromaDB.

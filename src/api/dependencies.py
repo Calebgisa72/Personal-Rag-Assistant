@@ -10,6 +10,7 @@ from infrastructure.document.chunking import ChunkingService
 from services.storage_service import StorageService
 from services.url_scraper_service import URLScraperService
 from services.document_service import DocumentService
+from services.conversation_service import ConversationService
 from persistence.uow import UnitOfWork
 
 # ==============================================================================
@@ -70,6 +71,10 @@ def get_document_service(
     vector_store=Depends(get_vector_store),
 ):
     return DocumentService(uow, storage_service, url_scraper_service, vector_store)
+
+
+def get_conversation_service(uow=Depends(get_uow)):
+    return ConversationService(uow)
 
 
 # ==============================================================================

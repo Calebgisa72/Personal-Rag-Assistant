@@ -7,6 +7,7 @@ from domain.interfaces import IDocumentRepository
 from domain.entities import DocumentEntity
 from infrastructure.database.models import DocumentMetadata
 
+
 class DocumentRepository(IDocumentRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -23,19 +24,21 @@ class DocumentRepository(IDocumentRepository):
             total_chunks=document.total_chunks,
             upload_status=document.upload_status,
             content_hash=document.content_hash,
-            metadata_fields=document.metadata
+            metadata_fields=document.metadata,
         )
         self.session.add(db_doc)
         await self.session.flush()
         return document
 
     async def get_by_id(self, document_id: uuid.UUID) -> Optional[DocumentEntity]:
-        stmt = select(DocumentMetadata).where(DocumentMetadata.document_id == document_id)
+        stmt = select(DocumentMetadata).where(
+            DocumentMetadata.document_id == document_id
+        )
         result = await self.session.execute(stmt)
         db_doc = result.scalar_one_or_none()
         if not db_doc:
             return None
-        
+
         return DocumentEntity(
             document_id=db_doc.document_id,
             user_id=db_doc.user_id,
@@ -49,14 +52,18 @@ class DocumentRepository(IDocumentRepository):
             content_hash=db_doc.content_hash,
             metadata=db_doc.metadata_fields,
             created_at=db_doc.created_at,
-            updated_at=db_doc.updated_at
+            updated_at=db_doc.updated_at,
         )
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> List[DocumentEntity]:
-        stmt = select(DocumentMetadata).where(DocumentMetadata.user_id == user_id).order_by(DocumentMetadata.created_at.desc())
+        stmt = (
+            select(DocumentMetadata)
+            .where(DocumentMetadata.user_id == user_id)
+            .order_by(DocumentMetadata.created_at.desc())
+        )
         result = await self.session.execute(stmt)
         db_docs = result.scalars().all()
-        
+
         return [
             DocumentEntity(
                 document_id=d.document_id,
@@ -71,8 +78,9 @@ class DocumentRepository(IDocumentRepository):
                 content_hash=d.content_hash,
                 metadata=d.metadata_fields,
                 created_at=d.created_at,
-                updated_at=d.updated_at
-            ) for d in db_docs
+                updated_at=d.updated_at,
+            )
+            for d in db_docs
         ]
 
     async def get_all_by_user_id_paginated(
@@ -84,40 +92,42 @@ class DocumentRepository(IDocumentRepository):
         upload_status: Optional[str] = None,
         search_query: Optional[str] = None,
         sort_by: str = "created_at",
-        sort_order: str = "desc"
+        sort_order: str = "desc",
     ) -> tuple[List[DocumentEntity], int]:
         from sqlalchemy import func
-        
+
         # Base query for counting and selecting
         base_filters = [DocumentMetadata.user_id == user_id]
-        
+
         if mime_type:
             base_filters.append(DocumentMetadata.mime_type == mime_type)
         if upload_status:
             base_filters.append(DocumentMetadata.upload_status == upload_status)
         if search_query:
             base_filters.append(DocumentMetadata.title.ilike(f"%{search_query}%"))
-            
+
         # Count total items
-        count_stmt = select(func.count(DocumentMetadata.document_id)).where(*base_filters)
+        count_stmt = select(func.count(DocumentMetadata.document_id)).where(
+            *base_filters
+        )
         count_result = await self.session.execute(count_stmt)
         total_count = count_result.scalar_one()
-        
+
         # Fetch paginated and sorted items
         stmt = select(DocumentMetadata).where(*base_filters)
-        
+
         # Sorting logic
         sort_col = getattr(DocumentMetadata, sort_by, DocumentMetadata.created_at)
         if sort_order.lower() == "desc":
             stmt = stmt.order_by(sort_col.desc())
         else:
             stmt = stmt.order_by(sort_col.asc())
-            
+
         stmt = stmt.offset(skip).limit(limit)
-        
+
         result = await self.session.execute(stmt)
         db_docs = result.scalars().all()
-        
+
         documents = [
             DocumentEntity(
                 document_id=d.document_id,
@@ -132,22 +142,24 @@ class DocumentRepository(IDocumentRepository):
                 content_hash=d.content_hash,
                 metadata=d.metadata_fields,
                 created_at=d.created_at,
-                updated_at=d.updated_at
-            ) for d in db_docs
+                updated_at=d.updated_at,
+            )
+            for d in db_docs
         ]
         return documents, total_count
 
-
-    async def get_by_hash(self, user_id: uuid.UUID, content_hash: str) -> Optional[DocumentEntity]:
+    async def get_by_hash(
+        self, user_id: uuid.UUID, content_hash: str
+    ) -> Optional[DocumentEntity]:
         stmt = select(DocumentMetadata).where(
             DocumentMetadata.user_id == user_id,
-            DocumentMetadata.content_hash == content_hash
+            DocumentMetadata.content_hash == content_hash,
         )
         result = await self.session.execute(stmt)
         db_doc = result.scalar_one_or_none()
         if not db_doc:
             return None
-        
+
         return DocumentEntity(
             document_id=db_doc.document_id,
             user_id=db_doc.user_id,
@@ -161,27 +173,31 @@ class DocumentRepository(IDocumentRepository):
             content_hash=db_doc.content_hash,
             metadata=db_doc.metadata_fields,
             created_at=db_doc.created_at,
-            updated_at=db_doc.updated_at
+            updated_at=db_doc.updated_at,
         )
 
     async def update_status(self, document_id: uuid.UUID, status: str) -> bool:
-        stmt = select(DocumentMetadata).where(DocumentMetadata.document_id == document_id)
+        stmt = select(DocumentMetadata).where(
+            DocumentMetadata.document_id == document_id
+        )
         result = await self.session.execute(stmt)
         db_doc = result.scalar_one_or_none()
         if not db_doc:
             return False
-        
+
         db_doc.upload_status = status
         await self.session.flush()
         return True
 
     async def delete(self, document_id: uuid.UUID) -> bool:
-        stmt = select(DocumentMetadata).where(DocumentMetadata.document_id == document_id)
+        stmt = select(DocumentMetadata).where(
+            DocumentMetadata.document_id == document_id
+        )
         result = await self.session.execute(stmt)
         db_doc = result.scalar_one_or_none()
         if not db_doc:
             return False
-        
+
         await self.session.delete(db_doc)
         await self.session.flush()
         return True

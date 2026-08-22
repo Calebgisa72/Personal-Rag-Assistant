@@ -5,8 +5,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from domain.interfaces import IConversationRepository
-from domain.entities import ConversationEntity, MessageEntity, ConversationSummaryEntity
-from infrastructure.database.models import Conversation, Message, ConversationSummary
+from domain.entities import (
+    ConversationEntity,
+    MessageEntity,
+    ConversationSummaryEntity,
+    MessageAttachmentEntity,
+)
+from infrastructure.database.models import (
+    Conversation,
+    Message,
+    ConversationSummary,
+    MessageAttachment,
+)
 
 
 class ConversationRepository(IConversationRepository):
@@ -29,7 +39,8 @@ class ConversationRepository(IConversationRepository):
         stmt = (
             select(Conversation)
             .options(
-                selectinload(Conversation.messages), selectinload(Conversation.summary)
+                selectinload(Conversation.messages).selectinload(Message.attachments),
+                selectinload(Conversation.summary),
             )
             .where(Conversation.conversation_id == conversation_id)
         )
@@ -38,16 +49,30 @@ class ConversationRepository(IConversationRepository):
         if not db_conv:
             return None
 
-        messages = [
-            MessageEntity(
-                message_id=m.message_id,
-                conversation_id=m.conversation_id,
-                role=m.role,
-                content=m.content,
-                created_at=m.created_at,
+        messages = []
+        for m in db_conv.messages:
+            attachments = [
+                MessageAttachmentEntity(
+                    attachment_id=a.attachment_id,
+                    message_id=a.message_id,
+                    file_name=a.file_name,
+                    file_type=a.file_type,
+                    is_temporary=a.is_temporary,
+                    parsed_content=a.parsed_content,
+                )
+                for a in m.attachments
+            ]
+
+            messages.append(
+                MessageEntity(
+                    message_id=m.message_id,
+                    conversation_id=m.conversation_id,
+                    role=m.role,
+                    content=m.content,
+                    created_at=m.created_at,
+                    attachments=attachments,
+                )
             )
-            for m in db_conv.messages
-        ]
 
         summary_entity = None
         if db_conv.summary:
@@ -67,13 +92,18 @@ class ConversationRepository(IConversationRepository):
             summary=summary_entity,
             created_at=db_conv.created_at,
             updated_at=db_conv.updated_at,
+            is_pinned=db_conv.is_pinned,
         )
 
-    async def get_by_user_id(self, user_id: uuid.UUID) -> List[ConversationEntity]:
+    async def get_by_user_id(
+        self, user_id: uuid.UUID, limit: int = 20, offset: int = 0
+    ) -> List[ConversationEntity]:
         stmt = (
             select(Conversation)
             .where(Conversation.user_id == user_id)
-            .order_by(Conversation.created_at.desc())
+            .order_by(Conversation.is_pinned.desc(), Conversation.updated_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
         result = await self.session.execute(stmt)
         db_convs = result.scalars().all()
@@ -85,6 +115,7 @@ class ConversationRepository(IConversationRepository):
                 title=c.title,
                 created_at=c.created_at,
                 updated_at=c.updated_at,
+                is_pinned=c.is_pinned,
             )
             for c in db_convs
         ]
@@ -97,6 +128,18 @@ class ConversationRepository(IConversationRepository):
             content=message.content,
         )
         self.session.add(db_msg)
+
+        for att in message.attachments:
+            db_att = MessageAttachment(
+                attachment_id=att.attachment_id,
+                message_id=db_msg.message_id,
+                file_name=att.file_name,
+                file_type=att.file_type,
+                is_temporary=att.is_temporary,
+                parsed_content=att.parsed_content,
+            )
+            self.session.add(db_att)
+
         await self.session.flush()
         return message
 
@@ -144,4 +187,26 @@ class ConversationRepository(IConversationRepository):
                 Message.message_id.not_in(kept_ids),
             )
             await self.session.execute(del_stmt)
+            await self.session.flush()
+
+    async def update_title(self, conversation_id: uuid.UUID, title: str) -> None:
+        stmt = select(Conversation).where(
+            Conversation.conversation_id == conversation_id
+        )
+        result = await self.session.execute(stmt)
+        db_conv = result.scalar_one_or_none()
+        if db_conv:
+            db_conv.title = title
+            await self.session.flush()
+
+    async def update_pin_status(
+        self, conversation_id: uuid.UUID, is_pinned: bool
+    ) -> None:
+        stmt = select(Conversation).where(
+            Conversation.conversation_id == conversation_id
+        )
+        result = await self.session.execute(stmt)
+        db_conv = result.scalar_one_or_none()
+        if db_conv:
+            db_conv.is_pinned = is_pinned
             await self.session.flush()

@@ -12,7 +12,10 @@ class ChromaDBVectorStore(IVectorStore):
             path=settings.CHROMA_PERSIST_DIRECTORY,
             settings=ChromaSettings(anonymized_telemetry=False),
         )
-        self.collection = self.client.get_or_create_collection(name=collection_name)
+        self.collection = self.client.get_or_create_collection(
+            name=collection_name, 
+            metadata={"hnsw:space": "cosine"}
+        )
 
     async def upsert(
         self, chunks: List[DocumentChunk], embeddings: List[List[float]]
@@ -44,7 +47,10 @@ class ChromaDBVectorStore(IVectorStore):
         filter_dict: Optional[Dict[str, Any]] = None,
     ) -> List[DocumentChunk]:
         results = self.collection.query(
-            query_embeddings=[query_embedding], n_results=k, where=filter_dict
+            query_embeddings=[query_embedding], 
+            n_results=k, 
+            where=filter_dict,
+            include=["documents", "metadatas", "distances"]
         )
 
         chunks = []
@@ -52,9 +58,16 @@ class ChromaDBVectorStore(IVectorStore):
             return chunks
 
         for i in range(len(results["ids"][0])):
+            distance = results["distances"][0][i] if results.get("distances") else 1.0
+            similarity = 1.0 - distance
+            
+            # Filter by relevance threshold
+            if similarity < settings.RAG_RELEVANCE_THRESHOLD:
+                continue
+
             chunk_id_str = results["ids"][0][i]
             content = results["documents"][0][i]
-            meta = results["metadatas"][0][i] if results["metadatas"] else {}
+            meta = results["metadatas"][0][i] if results.get("metadatas") else {}
 
             import uuid
 
