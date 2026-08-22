@@ -101,6 +101,4 @@ class MessageAttachment(Base):
     is_temporary: Mapped[bool] = mapped_column(Boolean, default=True)
     parsed_content: Mapped[str] = mapped_column(String, nullable=True)
 
-    message: Mapped["Message"] = relationship(
-        "Message", back_populates="attachments"
-    )
+    message: Mapped["Message"] = relationship("Message", back_populates="attachments")

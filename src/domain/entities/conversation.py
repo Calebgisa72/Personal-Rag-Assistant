@@ -13,6 +13,7 @@ class MessageAttachmentEntity:
     message_id: uuid.UUID
     attachment_id: uuid.UUID = field(default_factory=uuid.uuid4)
 
+
 @dataclass
 class MessageEntity:
     role: str
