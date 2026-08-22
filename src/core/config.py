@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     AMALI_API_URL: str = "https://ai-api.amalitech.org/api/v2/public/v1"
     AMALI_API_KEY: str = "dummy_key"
     AMALI_PROVIDER_NAME: str = "openai"  # or anthropic
+    
+    # Generation config
+    RAG_TEMPERATURE: float = 0.0
+    CHAT_TEMPERATURE: float = 0.7
+    INSUFFICIENT_CONTEXT_TEMPERATURE: float = 0.1
+    RAG_RELEVANCE_THRESHOLD: float = 0.35
 
     # Embedding config
     EMBEDDING_MODEL_NAME: str = "text-embedding-3-small"

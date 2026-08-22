@@ -44,7 +44,19 @@ class IConversationRepository(IRepository):
         pass
 
     @abstractmethod
-    async def get_by_user_id(self, user_id: uuid.UUID) -> List[ConversationEntity]:
+    async def get_by_user_id(
+        self, user_id: uuid.UUID, limit: int = 20, offset: int = 0
+    ) -> List[ConversationEntity]:
+        pass
+
+    @abstractmethod
+    async def update_title(self, conversation_id: uuid.UUID, title: str) -> None:
+        pass
+
+    @abstractmethod
+    async def update_pin_status(
+        self, conversation_id: uuid.UUID, is_pinned: bool
+    ) -> None:
         pass
 
     @abstractmethod

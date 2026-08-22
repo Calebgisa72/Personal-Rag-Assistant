@@ -4,6 +4,12 @@ from datetime import datetime
 import uuid
 
 
+class MessageAttachmentSchema(BaseModel):
+    attachment_id: uuid.UUID
+    file_name: str
+    file_type: str
+    is_temporary: bool
+
 class MessageSchema(BaseModel):
     role: str = Field(
         ..., description="Role of the sender (e.g., 'user', 'assistant', 'system')"
@@ -11,6 +17,15 @@ class MessageSchema(BaseModel):
     content: str = Field(..., description="Content of the message")
     message_id: Optional[uuid.UUID] = None
     created_at: Optional[datetime] = None
+    attachments: List[MessageAttachmentSchema] = Field(default_factory=list)
+
+
+class RenameConversationRequest(BaseModel):
+    title: str = Field(..., description="New title for the conversation")
+
+class PinConversationRequest(BaseModel):
+    is_pinned: bool = Field(..., description="Pin status")
+
 
 
 class ChatRequest(BaseModel):
@@ -39,3 +54,11 @@ class ConversationSchema(BaseModel):
     messages: List[MessageSchema] = Field(default_factory=list)
     summary: Optional[ConversationSummarySchema] = None
     created_at: datetime
+    updated_at: datetime
+    is_pinned: bool
+
+class ConversationListResponse(BaseModel):
+    items: List[ConversationSchema]
+    total: int
+    limit: int
+    offset: int

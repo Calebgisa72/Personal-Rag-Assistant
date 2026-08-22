@@ -5,12 +5,23 @@ from datetime import datetime
 
 
 @dataclass
+class MessageAttachmentEntity:
+    file_name: str
+    file_type: str
+    is_temporary: bool
+    parsed_content: Optional[str]
+    message_id: uuid.UUID
+    attachment_id: uuid.UUID = field(default_factory=uuid.uuid4)
+
+
+@dataclass
 class MessageEntity:
     role: str
     content: str
     conversation_id: uuid.UUID
     message_id: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime = field(default_factory=datetime.utcnow)
+    attachments: List[MessageAttachmentEntity] = field(default_factory=list)
 
 
 @dataclass
@@ -31,3 +42,4 @@ class ConversationEntity:
     summary: Optional[ConversationSummaryEntity] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
+    is_pinned: bool = False

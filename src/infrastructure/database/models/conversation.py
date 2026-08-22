@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import List, TYPE_CHECKING
-from sqlalchemy import String, DateTime, ForeignKey
+from sqlalchemy import String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -25,6 +25,7 @@ class Conversation(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped["User"] = relationship("User", back_populates="conversations")
     messages: Mapped[List["Message"]] = relationship(
@@ -79,3 +80,25 @@ class Message(Base):
     conversation: Mapped["Conversation"] = relationship(
         "Conversation", back_populates="messages"
     )
+    attachments: Mapped[List["MessageAttachment"]] = relationship(
+        "MessageAttachment",
+        back_populates="message",
+        cascade="all, delete-orphan",
+    )
+
+
+class MessageAttachment(Base):
+    __tablename__ = "message_attachments"
+
+    attachment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("messages.message_id", ondelete="CASCADE"), nullable=False
+    )
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_temporary: Mapped[bool] = mapped_column(Boolean, default=True)
+    parsed_content: Mapped[str] = mapped_column(String, nullable=True)
+
+    message: Mapped["Message"] = relationship("Message", back_populates="attachments")
