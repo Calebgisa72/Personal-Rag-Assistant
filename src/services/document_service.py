@@ -11,7 +11,7 @@ from infrastructure.vector_store.chroma_adapter import ChromaDBVectorStore
 from infrastructure.document.parsers.parser_factory import ParserFactory
 from infrastructure.document.chunking import SemanticChunkingService
 from services.embedding_service import EmbeddingStrategyService
-from infrastructure.ai.amali_provider import AmaliProvider
+from infrastructure.ai.amali_provider import AmaliAIProvider
 from core.config import settings
 from core.logger import logger
 

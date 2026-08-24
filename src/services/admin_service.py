@@ -1,11 +1,13 @@
 import uuid
 from persistence.uow import UnitOfWork
 from api.schemas.admin_schemas import SystemStatsResponse
+from services.document_service import DocumentService
 
 
 class AdminService:
-    def __init__(self, uow: UnitOfWork):
+    def __init__(self, uow: UnitOfWork, document_service: DocumentService):
         self.uow = uow
+        self.document_service = document_service
 
     async def get_all_users(self, page: int = 1, limit: int = 20):
         skip = (page - 1) * limit
@@ -26,3 +28,17 @@ class AdminService:
         if updated:
             await self.uow.commit()
         return updated
+
+    async def delete_user(self, user_id: uuid.UUID) -> bool:
+        user = await self.uow.users.get_by_id(user_id)
+        if not user:
+            return False
+            
+        docs = await self.uow.documents.get_by_user_id(user_id)
+        for doc in docs:
+            await self.document_service.delete_document(user_id, doc.document_id)
+            
+        deleted = await self.uow.users.delete(user_id)
+        if deleted:
+            await self.uow.commit()
+        return deleted

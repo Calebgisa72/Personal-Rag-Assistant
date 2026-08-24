@@ -82,6 +82,13 @@ def get_conversation_service(uow=Depends(get_uow)):
     return ConversationService(uow)
 
 
+def get_admin_service(
+    uow=Depends(get_uow),
+    document_service=Depends(get_document_service),
+):
+    return AdminService(uow, document_service)
+
+
 def get_auth_service(uow=Depends(get_uow)):
     return AuthService(uow)
 
@@ -117,13 +124,19 @@ async def get_current_user_entity(
 
 async def get_current_user(current_user = Depends(get_current_user_entity)) -> uuid.UUID:
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Your account has been deactivated. Please reach out to the admin for inquiries."
+        )
     return current_user.user_id
 
 
 async def get_current_superuser(current_user = Depends(get_current_user_entity)) -> uuid.UUID:
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Your account has been deactivated. Please reach out to the admin for inquiries."
+        )
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges"

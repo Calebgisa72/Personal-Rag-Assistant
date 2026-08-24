@@ -132,3 +132,14 @@ class UserRepository(IUserRepository):
         db_user.is_active = is_active
         await self.session.flush()
         return True
+
+    async def delete(self, user_id: uuid.UUID) -> bool:
+        stmt = select(User).where(User.user_id == user_id)
+        result = await self.session.execute(stmt)
+        db_user = result.scalar_one_or_none()
+        if not db_user:
+            return False
+
+        await self.session.delete(db_user)
+        await self.session.flush()
+        return True

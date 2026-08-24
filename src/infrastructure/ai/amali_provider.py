@@ -3,7 +3,7 @@ import asyncio
 from typing import List, Dict, Any
 from domain.interfaces import IAIProvider
 from core.config import settings
-from core.exceptions import AIProviderException
+from core.exceptions import AIProviderError
 from core.logger import logger
 
 
@@ -37,13 +37,13 @@ class AmaliAIProvider(IAIProvider):
                     status_code=e.response.status_code,
                     response=e.response.text,
                 )
-                raise AIProviderException(
+                raise AIProviderError(
                     f"API Error: {e.response.status_code}",
                     details={"response": e.response.text},
                 )
             except httpx.RequestError as e:
                 logger.error("amali_api_request_error", error=str(e))
-                raise AIProviderException(f"Request failed: {str(e)}")
+                raise AIProviderError(f"Amali API error: {str(e)}")
 
     async def generate_completion(
         self, messages: List[Dict[str, str]], model: str = "gpt-4o-mini", **kwargs

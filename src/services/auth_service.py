@@ -55,7 +55,8 @@ class AuthService:
             )
         if not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Your account has been deactivated. Please reach out to the admin for inquiries."
             )
         return user
 
@@ -91,8 +92,8 @@ class AuthService:
         user = await self.uow.users.get_by_id(user_id)
         if not user or not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account has been deactivated. Please reach out to the admin for inquiries." if user and not user.is_active else "User not found",
             )
 
         return self.create_tokens(user_id)
