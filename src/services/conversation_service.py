@@ -13,19 +13,25 @@ class ConversationService:
         self, user_id: uuid.UUID, conversation_id: uuid.UUID, title: str
     ) -> None:
         async with self.uow:
-            conv = await self.uow.conversation_repository.get_by_id(conversation_id)
+            conv = await self.uow.conversation_repository.get_by_id(
+                conversation_id
+            )
             if not conv:
                 raise ValueError("Conversation not found")
             if conv.user_id != user_id:
                 raise PermissionError("User does not own this conversation")
-            await self.uow.conversation_repository.update_title(conversation_id, title)
+            await self.uow.conversation_repository.update_title(
+                conversation_id, title
+            )
             await self.uow.commit()
 
     async def pin_conversation(
         self, user_id: uuid.UUID, conversation_id: uuid.UUID, is_pinned: bool
     ) -> None:
         async with self.uow:
-            conv = await self.uow.conversation_repository.get_by_id(conversation_id)
+            conv = await self.uow.conversation_repository.get_by_id(
+                conversation_id
+            )
             if not conv:
                 raise ValueError("Conversation not found")
             if conv.user_id != user_id:
@@ -50,7 +56,9 @@ class ConversationService:
         self, user_id: uuid.UUID, conversation_id: uuid.UUID
     ) -> ConversationEntity:
         async with self.uow:
-            conv = await self.uow.conversation_repository.get_by_id(conversation_id)
+            conv = await self.uow.conversation_repository.get_by_id(
+                conversation_id
+            )
             if not conv:
                 raise ValueError("Conversation not found")
             if conv.user_id != user_id:
