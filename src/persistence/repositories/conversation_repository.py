@@ -39,7 +39,8 @@ class ConversationRepository(IConversationRepository):
         stmt = (
             select(Conversation)
             .options(
-                selectinload(Conversation.messages).selectinload(Message.attachments),
+                selectinload(Conversation.messages).selectinload(
+                    Message.attachments),
                 selectinload(Conversation.summary),
             )
             .where(Conversation.conversation_id == conversation_id)

@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/rag_db"
 
+    # JWT Auth
+    SECRET_KEY: str = "super_secret_key_change_me_in_production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 1
+
     # Redis Cache & Rate Limiting
     REDIS_URL: str = "redis://localhost:6379/0"
 
@@ -21,7 +27,7 @@ class Settings(BaseSettings):
     AMALI_API_URL: str = "https://ai-api.amalitech.org/api/v2/public/v1"
     AMALI_API_KEY: str = "dummy_key"
     AMALI_PROVIDER_NAME: str = "openai"  # or anthropic
-    
+
     # Generation config
     RAG_TEMPERATURE: float = 0.0
     CHAT_TEMPERATURE: float = 0.7

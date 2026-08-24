@@ -97,10 +97,11 @@ class UserRepository(IUserRepository):
         total = await self.session.execute(count_stmt)
         total_count = total.scalar_one()
 
-        stmt = select(User).order_by(User.created_at.desc()).offset(skip).limit(limit)
+        stmt = select(User).order_by(
+            User.created_at.desc()).offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         db_users = result.scalars().all()
-        
+
         users = [
             UserEntity(
                 user_id=db.user_id,
@@ -127,8 +128,7 @@ class UserRepository(IUserRepository):
         db_user = result.scalar_one_or_none()
         if not db_user:
             return False
-        
+
         db_user.is_active = is_active
         await self.session.flush()
         return True
-
