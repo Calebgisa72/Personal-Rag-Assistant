@@ -3,7 +3,7 @@ from fastapi.responses import ORJSONResponse
 from fastapi import FastAPI
 from core.logger import setup_logger
 from core.middleware import RequestIDMiddleware
-from api.routers import chat, system, document_router
+from api.routers import chat, system, document_router, admin
 
 setup_logger()
 
@@ -24,3 +24,4 @@ register_exception_handlers(app)
 app.include_router(system.router)
 app.include_router(chat.router)
 app.include_router(document_router.router)
+app.include_router(admin.router)

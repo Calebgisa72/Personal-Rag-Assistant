@@ -201,3 +201,9 @@ class DocumentRepository(IDocumentRepository):
         await self.session.delete(db_doc)
         await self.session.flush()
         return True
+
+    async def count(self) -> int:
+        from sqlalchemy import func
+        count_stmt = select(func.count(DocumentMetadata.document_id))
+        result = await self.session.execute(count_stmt)
+        return result.scalar_one()

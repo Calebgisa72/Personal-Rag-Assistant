@@ -90,3 +90,45 @@ class UserRepository(IUserRepository):
             created_at=db_user.created_at,
             updated_at=db_user.updated_at,
         )
+
+    async def get_all_paginated(self, skip: int = 0, limit: int = 20) -> tuple[list[UserEntity], int]:
+        from sqlalchemy import func
+        count_stmt = select(func.count(User.user_id))
+        total = await self.session.execute(count_stmt)
+        total_count = total.scalar_one()
+
+        stmt = select(User).order_by(User.created_at.desc()).offset(skip).limit(limit)
+        result = await self.session.execute(stmt)
+        db_users = result.scalars().all()
+        
+        users = [
+            UserEntity(
+                user_id=db.user_id,
+                email=db.email,
+                username=db.username,
+                profile_pic=db.profile_pic,
+                is_active=db.is_active,
+                is_superuser=db.is_superuser,
+                created_at=db.created_at,
+                updated_at=db.updated_at,
+            ) for db in db_users
+        ]
+        return users, total_count
+
+    async def count(self) -> int:
+        from sqlalchemy import func
+        count_stmt = select(func.count(User.user_id))
+        result = await self.session.execute(count_stmt)
+        return result.scalar_one()
+
+    async def update_status(self, user_id: uuid.UUID, is_active: bool) -> bool:
+        stmt = select(User).where(User.user_id == user_id)
+        result = await self.session.execute(stmt)
+        db_user = result.scalar_one_or_none()
+        if not db_user:
+            return False
+        
+        db_user.is_active = is_active
+        await self.session.flush()
+        return True
+

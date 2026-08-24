@@ -11,6 +11,7 @@ from services.storage_service import StorageService
 from services.url_scraper_service import URLScraperService
 from services.document_service import DocumentService
 from services.conversation_service import ConversationService
+from services.admin_service import AdminService
 from persistence.uow import UnitOfWork
 
 # ==============================================================================
@@ -77,6 +78,10 @@ def get_conversation_service(uow=Depends(get_uow)):
     return ConversationService(uow)
 
 
+def get_admin_service(uow=Depends(get_uow)):
+    return AdminService(uow)
+
+
 # ==============================================================================
 # 3. Future Roadmap Dependencies (Stubs)
 # ==============================================================================
@@ -84,4 +89,9 @@ def get_conversation_service(uow=Depends(get_uow)):
 
 def get_current_user() -> uuid.UUID:
     """Mock user dependency until proper auth is implemented."""
+    return uuid.UUID(int=1)
+
+
+def get_current_superuser() -> uuid.UUID:
+    """Mock superuser dependency until proper auth is implemented."""
     return uuid.UUID(int=1)
