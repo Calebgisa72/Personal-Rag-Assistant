@@ -102,9 +102,11 @@ class DocumentRepository(IDocumentRepository):
         if mime_type:
             base_filters.append(DocumentMetadata.mime_type == mime_type)
         if upload_status:
-            base_filters.append(DocumentMetadata.upload_status == upload_status)
+            base_filters.append(
+                DocumentMetadata.upload_status == upload_status)
         if search_query:
-            base_filters.append(DocumentMetadata.title.ilike(f"%{search_query}%"))
+            base_filters.append(
+                DocumentMetadata.title.ilike(f"%{search_query}%"))
 
         # Count total items
         count_stmt = select(func.count(DocumentMetadata.document_id)).where(
@@ -117,7 +119,8 @@ class DocumentRepository(IDocumentRepository):
         stmt = select(DocumentMetadata).where(*base_filters)
 
         # Sorting logic
-        sort_col = getattr(DocumentMetadata, sort_by, DocumentMetadata.created_at)
+        sort_col = getattr(DocumentMetadata, sort_by,
+                           DocumentMetadata.created_at)
         if sort_order.lower() == "desc":
             stmt = stmt.order_by(sort_col.desc())
         else:
@@ -201,3 +204,9 @@ class DocumentRepository(IDocumentRepository):
         await self.session.delete(db_doc)
         await self.session.flush()
         return True
+
+    async def count(self) -> int:
+        from sqlalchemy import func
+        count_stmt = select(func.count(DocumentMetadata.document_id))
+        result = await self.session.execute(count_stmt)
+        return result.scalar_one()

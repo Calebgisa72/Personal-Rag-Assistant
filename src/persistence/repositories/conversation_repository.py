@@ -39,7 +39,8 @@ class ConversationRepository(IConversationRepository):
         stmt = (
             select(Conversation)
             .options(
-                selectinload(Conversation.messages).selectinload(Message.attachments),
+                selectinload(Conversation.messages).selectinload(
+                    Message.attachments),
                 selectinload(Conversation.summary),
             )
             .where(Conversation.conversation_id == conversation_id)
@@ -210,3 +211,9 @@ class ConversationRepository(IConversationRepository):
         if db_conv:
             db_conv.is_pinned = is_pinned
             await self.session.flush()
+
+    async def count(self) -> int:
+        from sqlalchemy import func
+        count_stmt = select(func.count(Conversation.conversation_id))
+        result = await self.session.execute(count_stmt)
+        return result.scalar_one()

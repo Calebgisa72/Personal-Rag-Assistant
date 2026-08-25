@@ -61,7 +61,8 @@ class RAGService:
                 ) as tmp:
                     tmp_path = tmp.name
                     file_size = 0
-                    while content := await file.read(1024 * 1024):  # 1MB chunks
+                    # 1MB chunks
+                    while content := await file.read(1024 * 1024):
                         file_size += len(content)
                         if file_size > settings.MAX_UPLOAD_SIZE:
                             raise ValueError(
@@ -75,10 +76,12 @@ class RAGService:
                 if "maximum limit" in str(e):
                     raise
                 logger.error("temp_document.parse_failed", detail=str(e))
-                raise ValueError(f"Failed to parse temporary document: {str(e)}")
+                raise ValueError(
+                    f"Failed to parse temporary document: {str(e)}")
             except Exception as e:
                 logger.error("temp_document.parse_failed", detail=str(e))
-                raise ValueError(f"Failed to parse temporary document: {str(e)}")
+                raise ValueError(
+                    f"Failed to parse temporary document: {str(e)}")
             finally:
                 if tmp_path and os.path.exists(tmp_path):
                     os.unlink(tmp_path)
@@ -96,7 +99,10 @@ class RAGService:
 
         # 2. Retrieve context
         try:
-            chunks = await self.vector_store.similarity_search(query_embedding, k=5)
+            filter_dict = {"user_id": str(user_id)}
+            chunks = await self.vector_store.similarity_search(
+                query_embedding, k=5, filter_dict=filter_dict
+            )
         except Exception as e:
             logger.error("vector_store.search_failed", detail=str(e))
             raise VectorStoreError(f"Failed to retrieve context: {str(e)}")
@@ -122,7 +128,8 @@ class RAGService:
             # Create a new conversation
             conversation = ConversationEntity(
                 user_id=user_id,
-                title=question[:50] + "..." if len(question) > 50 else question,
+                title=question[:50] +
+                "..." if len(question) > 50 else question,
             )
             conversation = await conv_repo.create(conversation)
 
@@ -228,7 +235,7 @@ class RAGService:
                 : -settings.MESSAGES_TO_KEEP_AFTER_SUMMARY
             ]
             messages_to_keep = conversation.messages[
-                -settings.MESSAGES_TO_KEEP_AFTER_SUMMARY :
+                -settings.MESSAGES_TO_KEEP_AFTER_SUMMARY:
             ]
 
             if not messages_to_summarize:
@@ -244,7 +251,8 @@ class RAGService:
 
             messages = [{"role": "user", "content": prompt}]
 
-            logger.info("summarizing_conversation", conversation_id=conversation_id_str)
+            logger.info("summarizing_conversation",
+                        conversation_id=conversation_id_str)
             try:
                 summary_result = await self.ai_provider.generate_completion(messages)
             except Exception as e:

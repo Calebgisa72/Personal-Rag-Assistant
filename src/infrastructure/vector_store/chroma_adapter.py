@@ -13,7 +13,7 @@ class ChromaDBVectorStore(IVectorStore):
             settings=ChromaSettings(anonymized_telemetry=False),
         )
         self.collection = self.client.get_or_create_collection(
-            name=collection_name, 
+            name=collection_name,
             metadata={"hnsw:space": "cosine"}
         )
 
@@ -32,6 +32,8 @@ class ChromaDBVectorStore(IVectorStore):
                 meta["page_number"] = chunk.page_number
             if chunk.source:
                 meta["source"] = chunk.source
+            if "user_id" in chunk.metadata:
+                meta["user_id"] = chunk.metadata["user_id"]
             metadatas.append(meta)
 
         # Chroma doesn't natively support async yet, but we wrap it in a pseudo-async interface
@@ -47,8 +49,8 @@ class ChromaDBVectorStore(IVectorStore):
         filter_dict: Optional[Dict[str, Any]] = None,
     ) -> List[DocumentChunk]:
         results = self.collection.query(
-            query_embeddings=[query_embedding], 
-            n_results=k, 
+            query_embeddings=[query_embedding],
+            n_results=k,
             where=filter_dict,
             include=["documents", "metadatas", "distances"]
         )
@@ -58,23 +60,26 @@ class ChromaDBVectorStore(IVectorStore):
             return chunks
 
         for i in range(len(results["ids"][0])):
-            distance = results["distances"][0][i] if results.get("distances") else 1.0
+            distance = results["distances"][0][i] if results.get(
+                "distances") else 1.0
             similarity = 1.0 - distance
-            
+
             # Filter by relevance threshold
             if similarity < settings.RAG_RELEVANCE_THRESHOLD:
                 continue
 
             chunk_id_str = results["ids"][0][i]
             content = results["documents"][0][i]
-            meta = results["metadatas"][0][i] if results.get("metadatas") else {}
+            meta = results["metadatas"][0][i] if results.get(
+                "metadatas") else {}
 
             import uuid
 
             chunk = DocumentChunk(
                 chunk_id=uuid.UUID(chunk_id_str),
                 content=content,
-                document_id=uuid.UUID(meta.get("document_id", str(uuid.uuid4()))),
+                document_id=uuid.UUID(
+                    meta.get("document_id", str(uuid.uuid4()))),
                 chunk_index=meta.get("chunk_index", 0),
                 page_number=meta.get("page_number"),
                 source=meta.get("source"),

@@ -3,7 +3,7 @@ import asyncio
 from typing import List, Dict, Any
 from domain.interfaces import IAIProvider
 from core.config import settings
-from core.exceptions import AIProviderException
+from core.exceptions import AIProviderError
 from core.logger import logger
 
 
@@ -37,13 +37,13 @@ class AmaliAIProvider(IAIProvider):
                     status_code=e.response.status_code,
                     response=e.response.text,
                 )
-                raise AIProviderException(
+                raise AIProviderError(
                     f"API Error: {e.response.status_code}",
-                    details={"response": e.response.text},
+                    detail={"response": e.response.text},
                 )
             except httpx.RequestError as e:
                 logger.error("amali_api_request_error", error=str(e))
-                raise AIProviderException(f"Request failed: {str(e)}")
+                raise AIProviderError(f"Amali API error: {str(e)}")
 
     async def generate_completion(
         self, messages: List[Dict[str, str]], model: str = "gpt-4o-mini", **kwargs
@@ -53,8 +53,8 @@ class AmaliAIProvider(IAIProvider):
         try:
             return res["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as e:
-            raise AIProviderException(
-                "Unexpected response format from Chat Completions", details={"raw": res}
+            raise AIProviderError(
+                "Unexpected response format from Chat Completions", detail={"raw": res}
             )
 
     async def _generate_single_embedding(self, text: str, model: str) -> List[float]:
@@ -63,16 +63,15 @@ class AmaliAIProvider(IAIProvider):
         try:
             return res["data"][0]["embedding"]
         except (KeyError, IndexError) as e:
-            raise AIProviderException(
-                "Unexpected response format from Embeddings", details={"raw": res}
+            raise AIProviderError(
+                "Unexpected response format from Embeddings", detail={"raw": res}
             )
 
     async def generate_embeddings(
         self, texts: List[str], model: str = "text-embedding-3-small"
     ) -> List[List[float]]:
-        # The gateway may support single-string inputs only.
-        # We embed them concurrently and use asyncio.gather to preserve original order.
-        tasks = [self._generate_single_embedding(text, model) for text in texts]
+        tasks = [self._generate_single_embedding(
+            text, model) for text in texts]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         final_embeddings = []

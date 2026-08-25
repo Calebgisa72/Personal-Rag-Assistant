@@ -43,6 +43,7 @@ class SemanticChunkingService:
                 combined_metadata = {
                     "title": document.title,
                     "mime_type": document.mime_type,
+                    "user_id": str(document.user_id),
                     **document.metadata,
                     **doc.metadata,  # Includes header info
                 }
@@ -72,6 +73,7 @@ class SemanticChunkingService:
                     metadata={
                         "title": document.title,
                         "mime_type": document.mime_type,
+                        "user_id": str(document.user_id),
                         **document.metadata,
                     },
                     source=document.metadata.get("source", "unknown"),

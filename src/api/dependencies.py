@@ -1,5 +1,7 @@
 from functools import lru_cache
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
 import uuid
 
 from infrastructure.ai.amali_provider import AmaliAIProvider
@@ -11,7 +13,10 @@ from services.storage_service import StorageService
 from services.url_scraper_service import URLScraperService
 from services.document_service import DocumentService
 from services.conversation_service import ConversationService
+from services.admin_service import AdminService
+from services.auth_service import AuthService
 from persistence.uow import UnitOfWork
+from core.config import settings
 
 # ==============================================================================
 # 1. Core Clients (Application-scoped singletons)
@@ -77,11 +82,63 @@ def get_conversation_service(uow=Depends(get_uow)):
     return ConversationService(uow)
 
 
-# ==============================================================================
-# 3. Future Roadmap Dependencies (Stubs)
-# ==============================================================================
+def get_admin_service(
+    uow=Depends(get_uow),
+    document_service=Depends(get_document_service),
+):
+    return AdminService(uow, document_service)
 
 
-def get_current_user() -> uuid.UUID:
-    """Mock user dependency until proper auth is implemented."""
-    return uuid.UUID(int=1)
+def get_auth_service(uow=Depends(get_uow)):
+    return AuthService(uow)
+
+# ==============================================================================
+# 3. Auth & RBAC Dependencies
+# ==============================================================================
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+
+async def get_current_user_entity(
+    token: str = Depends(oauth2_scheme),
+    uow: UnitOfWork = Depends(get_uow)
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user_id = uuid.UUID(user_id_str)
+    user = await uow.users.get_by_id(user_id)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_user(current_user = Depends(get_current_user_entity)) -> uuid.UUID:
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Your account has been deactivated. Please reach out to the admin for inquiries."
+        )
+    return current_user.user_id
+
+
+async def get_current_superuser(current_user = Depends(get_current_user_entity)) -> uuid.UUID:
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Your account has been deactivated. Please reach out to the admin for inquiries."
+        )
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges"
+        )
+    return current_user.user_id

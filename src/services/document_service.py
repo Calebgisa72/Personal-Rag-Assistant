@@ -11,7 +11,7 @@ from infrastructure.vector_store.chroma_adapter import ChromaDBVectorStore
 from infrastructure.document.parsers.parser_factory import ParserFactory
 from infrastructure.document.chunking import SemanticChunkingService
 from services.embedding_service import EmbeddingStrategyService
-from infrastructure.ai.amali_provider import AmaliProvider
+from infrastructure.ai.amali_provider import AmaliAIProvider
 from core.config import settings
 from core.logger import logger
 
@@ -165,7 +165,8 @@ class DocumentService:
         # 1. Delete from PostgreSQL
         deleted = await self.uow.documents.delete(document_id)
         if not deleted:
-            logger.error(f"Failed to delete document {document_id} from PostgreSQL")
+            logger.error(
+                f"Failed to delete document {document_id} from PostgreSQL")
             raise RuntimeError("Failed to delete document from database.")
 
         # 2. Delete local file
@@ -190,7 +191,7 @@ class DocumentService:
         """
         The core ingestion logic called by the background worker.
         """
-        ai_provider = AmaliProvider()
+        ai_provider = AmaliAIProvider()
         embedding_service = EmbeddingStrategyService(ai_provider=ai_provider)
         chunking_service = SemanticChunkingService()
 
