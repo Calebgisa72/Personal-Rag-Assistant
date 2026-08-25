@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # Generation config
     RAG_TEMPERATURE: float = 0.0
     CHAT_TEMPERATURE: float = 0.7
-    INSUFFICIENT_CONTEXT_TEMPERATURE: float = 0.1
+    INSUFFICIENT_CONTEXT_TEMPERATURE: float = 0.0
     RAG_RELEVANCE_THRESHOLD: float = 0.35
 
     # Embedding config
